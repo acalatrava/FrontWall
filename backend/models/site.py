@@ -1,0 +1,36 @@
+import uuid
+from datetime import datetime, timezone
+from sqlalchemy import String, Boolean, Integer, Float, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from database import Base
+
+
+class Site(Base):
+    __tablename__ = "sites"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    crawl_concurrency: Mapped[int] = mapped_column(Integer, default=5)
+    crawl_delay: Mapped[float] = mapped_column(Float, default=0.5)
+    crawl_max_pages: Mapped[int] = mapped_column(Integer, default=10000)
+    respect_robots_txt: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    auth_user: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    auth_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    shield_active: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    pages: Mapped[list["Page"]] = relationship("Page", back_populates="site", cascade="all, delete-orphan")  # type: ignore[name-defined] # noqa: F821
+    post_rules: Mapped[list["PostRule"]] = relationship("PostRule", back_populates="site", cascade="all, delete-orphan")  # type: ignore[name-defined] # noqa: F821
+    crawl_jobs: Mapped[list["CrawlJob"]] = relationship("CrawlJob", back_populates="site", cascade="all, delete-orphan")  # type: ignore[name-defined] # noqa: F821

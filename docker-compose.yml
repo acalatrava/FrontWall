@@ -1,0 +1,25 @@
+services:
+  webshield:
+    build: .
+    container_name: webshield
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - WS_SECRET_KEY=${WS_SECRET_KEY:-change-me-in-production}
+      - WS_ADMIN_PORT=8000
+      - WS_SHIELD_PORT=8080
+      - WS_LOG_LEVEL=info
+      - WS_DATA_DIR=/app/data
+      - WS_RATE_LIMIT_REQUESTS=60
+      - WS_RATE_LIMIT_WINDOW_SECONDS=60
+      - WS_MAX_REQUEST_SIZE_BYTES=1048576
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
