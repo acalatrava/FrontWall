@@ -53,3 +53,8 @@ async def toggle_learn_mode(enabled: bool = True):
 @router.get("/learned-posts")
 async def learned_posts():
     return shield_service.get_learned_posts()
+
+
+@router.get("/learned-assets")
+async def learned_assets():
+    return shield_service.get_learned_assets()

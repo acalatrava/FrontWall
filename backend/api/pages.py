@@ -71,7 +71,7 @@ async def add_manual_page(data: PageCreate, db: AsyncSession = Depends(get_db)):
         auth = httpx.BasicAuth(site.auth_user, site.auth_password)
 
     headers = {
-        "User-Agent": "WebShield Crawler/1.0 (+https://github.com/webshield)",
+        "User-Agent": "WebShield Crawler/1.0 (+https://github.com/acalatrava/webshield)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     if site.internal_url:
@@ -98,8 +98,35 @@ async def add_manual_page(data: PageCreate, db: AsyncSession = Depends(get_db)):
                 raise HTTPException(status_code=502, detail=f"Target returned {resp.status_code}")
 
             content_type = resp.headers.get("content-type", "")
+
             if "text/html" not in content_type:
-                raise HTTPException(status_code=400, detail="URL does not return HTML content")
+                cache_path = rewriter.url_to_cache_path(data.url)
+                full_path = cache_dir / cache_path
+                full_path.parent.mkdir(parents=True, exist_ok=True)
+                full_path.write_bytes(resp.content)
+
+                clean_path = rewriter.url_to_cache_path_no_query(data.url)
+                if clean_path != cache_path:
+                    clean_full = cache_dir / clean_path
+                    if not clean_full.exists():
+                        clean_full.parent.mkdir(parents=True, exist_ok=True)
+                        clean_full.write_bytes(resp.content)
+
+                page = Page(
+                    site_id=data.site_id,
+                    url=data.url,
+                    path=rewriter.to_relative_path(data.url),
+                    content_type=content_type.split(";")[0].strip(),
+                    status_code=resp.status_code,
+                    cache_path=cache_path,
+                    size_bytes=len(resp.content),
+                    is_manual=True,
+                )
+                db.add(page)
+                await db.commit()
+                await db.refresh(page)
+                logger.info("Manual add asset %s: %d bytes cached", data.url, len(resp.content))
+                return page
 
             html = resp.text
             rewritten = rewriter.rewrite_html(html)

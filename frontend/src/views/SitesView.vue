@@ -32,6 +32,10 @@
           <div>
             <h3 class="text-lg font-semibold text-white">{{ site.name }}</h3>
             <p class="text-sm text-gray-400 mt-1">{{ site.target_url }}</p>
+            <p v-if="site.internal_url" class="text-xs text-amber-400/70 mt-1">
+              Internal: {{ site.internal_url }}
+              <span v-if="site.override_host" class="text-gray-500 ml-1">(Host: {{ site.override_host }})</span>
+            </p>
             <div class="flex gap-4 mt-3 text-xs text-gray-500">
               <span>Concurrency: {{ site.crawl_concurrency }}</span>
               <span>Max pages: {{ site.crawl_max_pages }}</span>
@@ -98,6 +102,31 @@
             <input v-model="form.respect_robots_txt" type="checkbox" id="robots" class="rounded bg-gray-800 border-gray-700" />
             <label for="robots" class="text-sm text-gray-300">Respect robots.txt</label>
           </div>
+          <div>
+            <button
+              type="button"
+              @click="showAdvanced = !showAdvanced"
+              class="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+            >
+              <svg class="w-4 h-4 transition-transform" :class="showAdvanced ? 'rotate-90' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              Advanced Options
+            </button>
+            <div v-if="showAdvanced" class="mt-3 space-y-3 bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+              <p class="text-xs text-gray-400 mb-2">
+                Use these when the site isn't publicly accessible and the crawler needs to reach it through an internal address.
+              </p>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Internal URL</label>
+                <input v-model="form.internal_url" type="url" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="http://mysite.int:8000" />
+                <p class="text-xs text-gray-500 mt-1">The actual address where the server is reachable (e.g. internal IP, Docker hostname)</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Host Override</label>
+                <input v-model="form.override_host" type="text" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="mysite.com" />
+                <p class="text-xs text-gray-500 mt-1">The hostname to send in the Host header (defaults to Target URL hostname)</p>
+              </div>
+            </div>
+          </div>
           <div v-if="formError" class="text-sm text-red-400">{{ formError }}</div>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">Cancel</button>
@@ -119,6 +148,7 @@ import { useSitesStore } from '../stores/sites'
 const store = useSitesStore()
 const { sites, loading } = storeToRefs(store)
 const showModal = ref(false)
+const showAdvanced = ref(false)
 const creating = ref(false)
 const formError = ref('')
 
@@ -129,6 +159,8 @@ const form = reactive({
   crawl_delay: 0.5,
   crawl_max_pages: 10000,
   respect_robots_txt: true,
+  internal_url: '',
+  override_host: '',
 })
 
 onMounted(() => store.fetchSites())
@@ -137,9 +169,13 @@ async function handleCreate() {
   formError.value = ''
   creating.value = true
   try {
-    await store.createSite({ ...form })
+    const payload = { ...form }
+    if (!payload.internal_url) payload.internal_url = null
+    if (!payload.override_host) payload.override_host = null
+    await store.createSite(payload)
     showModal.value = false
-    Object.assign(form, { name: '', target_url: '', crawl_concurrency: 5, crawl_delay: 0.5, crawl_max_pages: 10000, respect_robots_txt: true })
+    showAdvanced.value = false
+    Object.assign(form, { name: '', target_url: '', crawl_concurrency: 5, crawl_delay: 0.5, crawl_max_pages: 10000, respect_robots_txt: true, internal_url: '', override_host: '' })
   } catch (e) {
     formError.value = e.response?.data?.detail || 'Failed to create site'
   } finally {

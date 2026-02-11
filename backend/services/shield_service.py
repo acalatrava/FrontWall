@@ -17,12 +17,14 @@ from shield.csp_builder import scan_cache_for_origins, build_csp
 from shield.waf import WAFMiddleware
 from shield.rate_limiter import RateLimiter
 from shield.post_handler import PostHandler
+from shield.asset_learner import AssetLearner
 
 logger = logging.getLogger("webshield.services.shield")
 
 _shield_server: uvicorn.Server | None = None
 _shield_task: asyncio.Task | None = None
 _post_handler: PostHandler | None = None
+_asset_learner: AssetLearner | None = None
 
 
 async def _load_post_rules(site_id: str) -> list[dict]:
@@ -62,7 +64,7 @@ async def _load_post_rules(site_id: str) -> list[dict]:
 
 
 async def deploy_shield(site_id: str) -> bool:
-    global _shield_server, _shield_task, _post_handler
+    global _shield_server, _shield_task, _post_handler, _asset_learner
 
     if _shield_server is not None:
         await undeploy_shield()
@@ -75,19 +77,27 @@ async def deploy_shield(site_id: str) -> bool:
         site = await db.get(Site, site_id)
         target_url = site.target_url if site else None
 
+    internal_url = site.internal_url if site else None
+    override_host = site.override_host if site else None
+
     scan_result = scan_cache_for_origins(cache_dir, target_url=target_url)
     csp = build_csp(scan_result)
     logger.info("Built dynamic CSP with %d external origins", len(scan_result["origins"]))
 
-    shield_app = create_shield_app(site_id, csp=csp)
+    _asset_learner = AssetLearner(
+        site_id=site_id,
+        target_url=target_url or "",
+        cache_dir=cache_dir,
+        internal_url=internal_url,
+        override_host=override_host,
+    )
+
+    shield_app = create_shield_app(site_id, csp=csp, asset_learner=_asset_learner)
 
     rate_limiter = RateLimiter(
         global_requests=settings.rate_limit_requests,
         global_window=settings.rate_limit_window_seconds,
     )
-
-    internal_url = site.internal_url if site else None
-    override_host = site.override_host if site else None
 
     post_rules = await _load_post_rules(site_id)
     _post_handler = PostHandler(
@@ -135,7 +145,7 @@ async def deploy_shield(site_id: str) -> bool:
 
 
 async def undeploy_shield() -> bool:
-    global _shield_server, _shield_task, _post_handler
+    global _shield_server, _shield_task, _post_handler, _asset_learner
 
     if _shield_server is None:
         return False
@@ -156,6 +166,7 @@ async def undeploy_shield() -> bool:
     _shield_server = None
     _shield_task = None
     _post_handler = None
+    _asset_learner = None
 
     logger.info("Shield undeployed")
     return True
@@ -169,6 +180,8 @@ def set_learn_mode(enabled: bool) -> bool:
     if _post_handler is None:
         return False
     _post_handler.learn_mode = enabled
+    if _asset_learner is not None:
+        _asset_learner.enabled = enabled
     logger.info("Learn mode %s", "enabled" if enabled else "disabled")
     return True
 
@@ -183,6 +196,12 @@ def get_learned_posts() -> list[dict]:
     if _post_handler is None:
         return []
     return list(_post_handler.learned_posts)
+
+
+def get_learned_assets() -> list[dict]:
+    if _asset_learner is None:
+        return []
+    return list(_asset_learner.learned_assets)
 
 
 async def auto_deploy_if_needed() -> None:

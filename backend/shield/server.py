@@ -79,7 +79,7 @@ def _resolve_cache_file(cache_root: Path, path: str, query: str = "") -> Path:
     return cache_root / path / "index.html" if not path or path.endswith("/") else cache_root / path
 
 
-def create_shield_app(site_id: str | None = None, csp: str | None = None) -> FastAPI:
+def create_shield_app(site_id: str | None = None, csp: str | None = None, asset_learner=None) -> FastAPI:
     """Create a hardened FastAPI app that serves cached static files."""
 
     shield = FastAPI(
@@ -123,6 +123,15 @@ def create_shield_app(site_id: str | None = None, csp: str | None = None) -> Fas
             return GENERIC_403
 
         if not file_path.exists() or not file_path.is_file():
+            if asset_learner and asset_learner.enabled:
+                learned_path = await asset_learner.try_fetch_and_cache(path, query)
+                if learned_path and learned_path.exists():
+                    ct, _ = mimetypes.guess_type(str(learned_path))
+                    return FileResponse(
+                        path=str(learned_path),
+                        media_type=ct or "application/octet-stream",
+                        headers={"X-Served-By": "WebShield", "X-Learned": "true"},
+                    )
             return GENERIC_404
 
         content_type, _ = mimetypes.guess_type(str(file_path))

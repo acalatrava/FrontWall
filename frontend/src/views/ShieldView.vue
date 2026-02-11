@@ -92,8 +92,12 @@
         <div>
           <h2 class="text-lg font-semibold text-white">Learn Mode</h2>
           <p class="text-sm text-gray-400 mt-1">
-            When enabled, unmatched POST requests are automatically captured and added as exception rules.
+            When enabled, the shield automatically learns from live traffic:
           </p>
+          <ul class="text-xs text-gray-500 mt-2 space-y-1 list-disc list-inside">
+            <li>POST requests are captured and forwarded to the origin, creating exception rules automatically</li>
+            <li>Missing assets (404s) are fetched from the origin server, cached, and served transparently</li>
+          </ul>
         </div>
         <label class="flex items-center cursor-pointer">
           <div class="relative">
@@ -128,8 +132,24 @@
         <p class="text-xs text-gray-500 mt-2">These rules have been auto-created. Review them in the POST Rules section.</p>
       </div>
 
-      <div v-else-if="shieldStore.learnMode" class="text-sm text-gray-500 bg-gray-800/50 rounded-lg p-4 text-center">
-        Waiting for POST requests... Submit a form on the deployed site to capture it.
+      <div v-if="learnedAssets.length > 0" class="mt-4">
+        <h3 class="text-sm font-medium text-gray-300 mb-2">Learned Assets ({{ learnedAssets.length }})</h3>
+        <div class="divide-y divide-gray-800 bg-gray-800/50 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+          <div v-for="(asset, idx) in learnedAssets" :key="idx" class="px-4 py-2">
+            <div class="flex items-center justify-between">
+              <code class="text-sm text-cyan-400 truncate mr-4">{{ asset.path }}</code>
+              <div class="flex items-center gap-3 shrink-0">
+                <span class="text-xs text-gray-500">{{ asset.content_type }}</span>
+                <span class="text-xs text-gray-600">{{ formatSize(asset.size) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">These assets were fetched from the origin and cached automatically.</p>
+      </div>
+
+      <div v-if="!learnedPosts.length && !learnedAssets.length && shieldStore.learnMode" class="text-sm text-gray-500 bg-gray-800/50 rounded-lg p-4 text-center">
+        Waiting for traffic... Browse the deployed site to capture missing assets and form submissions.
       </div>
     </div>
 
@@ -151,13 +171,25 @@ const shieldStore = useShieldStore()
 const { sites } = storeToRefs(sitesStore)
 const deployError = ref('')
 const learnedPosts = ref([])
+const learnedAssets = ref([])
 let learnPollTimer = null
 
-async function fetchLearnedPosts() {
+function formatSize(bytes) {
+  if (!bytes) return '0 B'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1048576).toFixed(1) + ' MB'
+}
+
+async function fetchLearnedData() {
   if (!shieldStore.active) return
   try {
-    const { data } = await api.get('/shield/learned-posts')
-    learnedPosts.value = data
+    const [posts, assets] = await Promise.all([
+      api.get('/shield/learned-posts'),
+      api.get('/shield/learned-assets'),
+    ])
+    learnedPosts.value = posts.data
+    learnedAssets.value = assets.data
   } catch {}
 }
 
@@ -165,7 +197,7 @@ onMounted(async () => {
   sitesStore.fetchSites()
   await shieldStore.fetchStatus()
   if (shieldStore.learnMode) {
-    fetchLearnedPosts()
+    fetchLearnedData()
     startLearnPoll()
   }
 })
@@ -184,6 +216,7 @@ async function handleUndeploy() {
     await shieldStore.undeploy()
     stopLearnPoll()
     learnedPosts.value = []
+    learnedAssets.value = []
   } catch (e) {
     deployError.value = e.response?.data?.detail || 'Failed to undeploy shield'
   }
@@ -194,7 +227,7 @@ async function handleToggleLearn() {
   try {
     await shieldStore.toggleLearnMode(newState)
     if (newState) {
-      fetchLearnedPosts()
+      fetchLearnedData()
       startLearnPoll()
     } else {
       stopLearnPoll()
@@ -206,7 +239,7 @@ async function handleToggleLearn() {
 
 function startLearnPoll() {
   if (learnPollTimer) return
-  learnPollTimer = setInterval(fetchLearnedPosts, 3000)
+  learnPollTimer = setInterval(fetchLearnedData, 3000)
 }
 
 function stopLearnPoll() {
