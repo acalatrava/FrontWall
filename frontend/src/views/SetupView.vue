@@ -32,10 +32,10 @@
             v-model="password"
             type="password"
             required
-            minlength="8"
+            minlength="10"
             class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          <p class="mt-1 text-xs text-gray-500">Minimum 8 characters</p>
+          <p class="mt-1 text-xs text-gray-500">Min 10 chars, at least 1 uppercase, 1 lowercase, 1 digit</p>
         </div>
 
         <div>
@@ -84,7 +84,12 @@ async function handleSetup() {
     await auth.setup(username.value, password.value)
     router.push('/')
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Setup failed'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      error.value = detail.map(d => d.msg?.replace('Value error, ', '') || d.msg).join('. ')
+    } else {
+      error.value = detail || 'Setup failed'
+    }
   } finally {
     loading.value = false
   }

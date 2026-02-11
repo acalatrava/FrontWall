@@ -78,7 +78,12 @@ async function handleLogin() {
     await auth.login(username.value, password.value)
     router.push('/')
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Login failed'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      error.value = detail.map(d => d.msg?.replace('Value error, ', '') || d.msg).join('. ')
+    } else {
+      error.value = detail || 'Login failed'
+    }
   } finally {
     loading.value = false
   }
