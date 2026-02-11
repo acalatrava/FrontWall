@@ -258,7 +258,8 @@ async def refresh_tokens(request: Request, response: Response, db: AsyncSession 
             detail="Token reuse detected — all sessions revoked. Please log in again.",
         )
 
-    if stored.expires_at < now:
+    expires_at = stored.expires_at.replace(tzinfo=timezone.utc) if stored.expires_at.tzinfo is None else stored.expires_at
+    if expires_at < now:
         stored.revoked = True
         await db.commit()
         _clear_auth_cookies(response)

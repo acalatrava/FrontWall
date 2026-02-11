@@ -72,11 +72,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             del response.headers["X-Powered-By"]
 
         path = request.url.path
-        if any(path.endswith(ext) for ext in IMMUTABLE_EXTENSIONS):
-            for k, v in IMMUTABLE_CACHE_HEADERS.items():
-                response.headers[k] = v
+        is_ok = 200 <= response.status_code < 400
+        if is_ok:
+            if any(path.endswith(ext) for ext in IMMUTABLE_EXTENSIONS):
+                for k, v in IMMUTABLE_CACHE_HEADERS.items():
+                    response.headers[k] = v
+            else:
+                for k, v in STATIC_CACHE_HEADERS.items():
+                    response.headers[k] = v
         else:
-            for k, v in STATIC_CACHE_HEADERS.items():
-                response.headers[k] = v
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
 
         return response
