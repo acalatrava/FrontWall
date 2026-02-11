@@ -23,6 +23,7 @@ class PostHandler:
         target_url: str = "",
         internal_url: str | None = None,
         override_host: str | None = None,
+        event_collector=None,
     ):
         self.sanitizer = InputSanitizer()
         self.rate_limiter = rate_limiter
@@ -34,6 +35,21 @@ class PostHandler:
         self.learn_mode = False
         self.learned_posts: list[dict] = []
         self._max_learned = 500
+        self.collector = event_collector
+
+    def _emit(self, event_type, severity, client_ip, path, request, details=None):
+        if self.collector:
+            self.collector.emit(
+                event_type=event_type,
+                severity=severity,
+                client_ip=client_ip,
+                path=path,
+                method="POST",
+                user_agent=request.headers.get("user-agent", ""),
+                site_id=self.site_id,
+                details=details,
+                blocked=True,
+            )
 
     def _build_forward_url(self, path: str) -> str:
         """Build the URL to forward a POST to (internal if configured, otherwise target)."""
@@ -86,6 +102,7 @@ class PostHandler:
             if self.learn_mode:
                 return await self._learn_and_forward(request, path, client_ip)
             logger.warning("POST to unregistered path: %s (IP: %s)", path, client_ip)
+            self._emit("post_unregistered", "low", client_ip, path, request)
             return Response(content="Method Not Allowed", status_code=405, media_type="text/plain")
 
         allowed = await self.rate_limiter.check_endpoint(
@@ -96,6 +113,7 @@ class PostHandler:
         )
         if not allowed:
             logger.warning("POST rate limit hit: %s (IP: %s)", path, client_ip)
+            self._emit("post_rate_limited", "medium", client_ip, path, request)
             return Response(content="Too Many Requests", status_code=429, media_type="text/plain")
 
         body = await request.body()
@@ -119,6 +137,7 @@ class PostHandler:
         honeypot = rule.get("honeypot_field")
         if honeypot and raw_data.get(honeypot):
             logger.warning("Honeypot triggered on %s (IP: %s)", path, client_ip)
+            self._emit("honeypot_triggered", "critical", client_ip, path, request, {"honeypot_field": honeypot})
             return self._success_response(rule)
 
         field_rules = rule.get("fields", [])

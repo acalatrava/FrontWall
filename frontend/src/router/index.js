@@ -48,6 +48,11 @@ const routes = [
     component: () => import('../views/SecurityView.vue'),
   },
   {
+    path: '/analytics',
+    name: 'analytics',
+    component: () => import('../views/AnalyticsView.vue'),
+  },
+  {
     path: '/shield',
     name: 'shield',
     component: () => import('../views/ShieldView.vue'),

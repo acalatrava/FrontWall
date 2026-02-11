@@ -17,6 +17,7 @@ from database import get_db
 from models.admin_user import AdminUser
 from models.refresh_token import RefreshToken
 from schemas.auth import SetupRequest, LoginRequest, AuthResponse
+from services.security_collector import collector as security_collector
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -196,6 +197,15 @@ async def login(data: LoginRequest, request: Request, response: Response, db: As
 
     if not user or not _verify_password(data.password, user.password_hash):
         await _record_login_attempt(client_ip)
+        security_collector.emit(
+            event_type="login_failed",
+            severity="high",
+            client_ip=client_ip,
+            path="/api/auth/login",
+            method="POST",
+            user_agent=request.headers.get("user-agent", ""),
+            details={"username": data.username},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -227,6 +237,18 @@ async def refresh_tokens(request: Request, response: Response, db: AsyncSession 
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     if stored.revoked:
+        client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
+            request.client.host if request.client else "0.0.0.0"
+        )
+        security_collector.emit(
+            event_type="token_reuse",
+            severity="critical",
+            client_ip=client_ip,
+            path="/api/auth/refresh",
+            method="POST",
+            user_agent=request.headers.get("user-agent", ""),
+            details={"family_id": stored.family_id},
+        )
         await db.execute(
             update(RefreshToken)
             .where(RefreshToken.family_id == stored.family_id)

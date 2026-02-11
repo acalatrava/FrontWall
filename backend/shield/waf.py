@@ -62,6 +62,8 @@ class WAFMiddleware(BaseHTTPMiddleware):
         post_handler=None,
         block_bots: bool = True,
         block_suspicious_paths: bool = True,
+        site_id: str = "",
+        event_collector=None,
     ):
         super().__init__(app)
         self.rate_limiter = rate_limiter or RateLimiter()
@@ -71,33 +73,52 @@ class WAFMiddleware(BaseHTTPMiddleware):
         self.post_handler = post_handler
         self.block_bots = block_bots
         self.block_suspicious_paths = block_suspicious_paths
+        self.site_id = site_id
+        self.collector = event_collector
+
+    def _emit(self, event_type, severity, client_ip, path, method, user_agent, details=None):
+        if self.collector:
+            self.collector.emit(
+                event_type=event_type,
+                severity=severity,
+                client_ip=client_ip,
+                path=path,
+                method=method,
+                user_agent=user_agent,
+                site_id=self.site_id,
+                details=details,
+                blocked=True,
+            )
 
     async def dispatch(self, request: Request, call_next):
         client_ip = self._get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")
+        path = request.url.path
+        method = request.method
 
         if client_ip in self.ip_blacklist:
             logger.warning("Blocked blacklisted IP: %s", client_ip)
+            self._emit("ip_blacklisted", "critical", client_ip, path, method, user_agent)
             return BLOCKED_RESPONSE
 
         if self.ip_whitelist and client_ip not in self.ip_whitelist:
             pass
 
-        user_agent = request.headers.get("user-agent", "")
         if self.block_bots and self._is_malicious_bot(user_agent):
             logger.warning("Blocked malicious bot: %s (IP: %s)", user_agent, client_ip)
+            self._emit("bot_blocked", "high", client_ip, path, method, user_agent, {"user_agent": user_agent})
             return BLOCKED_RESPONSE
-
-        path = request.url.path
 
         is_static = any(path.lower().endswith(ext) for ext in STATIC_ASSET_EXTENSIONS)
         if not is_static and self.rate_limiter:
             if not await self.rate_limiter.check_global(client_ip):
                 logger.warning("Rate limit exceeded for IP: %s", client_ip)
+                self._emit("rate_limited", "medium", client_ip, path, method, user_agent)
                 return RATE_LIMITED_RESPONSE
 
         if self.block_suspicious_paths and self._is_suspicious_path(path):
             post_allowed = (
-                request.method == "POST"
+                method == "POST"
                 and self.post_handler
                 and (
                     self.post_handler.find_matching_rule(path)
@@ -106,11 +127,13 @@ class WAFMiddleware(BaseHTTPMiddleware):
             )
             if not post_allowed:
                 logger.warning("Blocked suspicious path: %s (IP: %s)", path, client_ip)
+                self._emit("suspicious_path", "high", client_ip, path, method, user_agent, {"path": path})
                 return BLOCKED_RESPONSE
 
         query = str(request.url.query)
         if self.block_suspicious_paths and query and self._is_suspicious_path(query):
             logger.warning("Blocked suspicious query: %s (IP: %s)", query, client_ip)
+            self._emit("suspicious_query", "high", client_ip, path, method, user_agent, {"query": query})
             return BLOCKED_RESPONSE
 
         content_length = request.headers.get("content-length")
@@ -118,6 +141,7 @@ class WAFMiddleware(BaseHTTPMiddleware):
             try:
                 if int(content_length) > self.max_body_size:
                     logger.warning("Blocked oversized request: %s bytes (IP: %s)", content_length, client_ip)
+                    self._emit("payload_too_large", "medium", client_ip, path, method, user_agent, {"size": content_length})
                     return PAYLOAD_TOO_LARGE
             except (ValueError, OverflowError):
                 return GENERIC_400

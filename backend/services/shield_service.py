@@ -19,6 +19,7 @@ from shield.waf import WAFMiddleware
 from shield.rate_limiter import RateLimiter
 from shield.post_handler import PostHandler
 from shield.asset_learner import AssetLearner
+from services.security_collector import collector as security_collector
 
 logger = logging.getLogger("frontwall.services.shield")
 
@@ -143,6 +144,7 @@ async def deploy_shield(site_id: str) -> int:
         target_url=target_url,
         internal_url=internal_url,
         override_host=override_host,
+        event_collector=security_collector,
     )
     post_handler.load_rules(post_rules)
 
@@ -160,6 +162,8 @@ async def deploy_shield(site_id: str) -> int:
             post_handler=post_handler,
             block_bots=block_bots,
             block_suspicious_paths=block_suspicious_paths,
+            site_id=site_id,
+            event_collector=security_collector,
         )
 
     config = uvicorn.Config(

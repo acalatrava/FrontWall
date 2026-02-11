@@ -14,12 +14,14 @@ from sqlalchemy import delete
 from config import settings
 from database import init_db, async_session
 from services.shield_service import auto_deploy_if_needed
+from services.security_collector import collector as security_collector
 from api.auth import router as auth_router, get_current_user
 from api.sites import router as sites_router
 from api.pages import router as pages_router
 from api.rules import router as rules_router
 from api.crawler import router as crawler_router, ws_router as crawler_ws_router
 from api.shield import router as shield_router
+from api.analytics import router as analytics_router
 from models.refresh_token import RefreshToken
 
 logging.basicConfig(
@@ -59,8 +61,10 @@ async def lifespan(app: FastAPI):
     await init_db()
     await auto_deploy_if_needed()
     _cleanup_task = asyncio.create_task(_cleanup_expired_tokens())
+    security_collector.start()
     logger.info("FrontWall started — admin on port %s", settings.admin_port)
     yield
+    security_collector.stop()
     if _cleanup_task:
         _cleanup_task.cancel()
     logger.info("FrontWall shutting down")
@@ -96,6 +100,7 @@ app.include_router(pages_router, dependencies=[Depends(get_current_user)])
 app.include_router(rules_router, dependencies=[Depends(get_current_user)])
 app.include_router(crawler_router, dependencies=[Depends(get_current_user)])
 app.include_router(shield_router, dependencies=[Depends(get_current_user)])
+app.include_router(analytics_router, dependencies=[Depends(get_current_user)])
 
 
 @app.get("/api/health")

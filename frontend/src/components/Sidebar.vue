@@ -60,12 +60,14 @@ const DashboardIcon = makeIcon(['M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z', 
 const SitesIcon = makeIcon(['M12 2L2 7l10 5 10-5-10-5z', 'M2 17l10 5 10-5', 'M2 12l10 5 10-5'])
 const ShieldIcon = makeIcon('M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z')
 const SecurityIcon = makeIcon(['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M12 8v4', 'M12 16h.01'])
+const AnalyticsIcon = makeIcon(['M18 20V10', 'M12 20V4', 'M6 20v-6'])
 const LogoutIcon = makeIcon(['M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4', 'M16 17l5-5-5-5', 'M21 12H9'])
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: DashboardIcon },
   { to: '/sites', label: 'Sites', icon: SitesIcon },
   { to: '/security', label: 'Security', icon: SecurityIcon },
+  { to: '/analytics', label: 'Analytics', icon: AnalyticsIcon },
   { to: '/shield', label: 'Shield', icon: ShieldIcon },
 ]
 
