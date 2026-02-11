@@ -39,14 +39,23 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
+
+_cors_origins = [
+    f"http://localhost:{settings.admin_port}",
+    f"http://127.0.0.1:{settings.admin_port}",
+    f"http://localhost:{settings.shield_port}",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-Requested-With"],
 )
 
 
@@ -61,7 +70,7 @@ app.include_router(shield_router, dependencies=[Depends(get_current_user)])
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "version": settings.app_version}
+    return {"status": "ok"}
 
 
 _static_candidates = [

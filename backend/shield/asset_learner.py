@@ -33,6 +33,9 @@ class AssetLearner:
         self.learned_assets: list[dict] = []
         self.rewriter = URLRewriter(target_url)
         self._pending: set[str] = set()
+        self._max_learned = 2000
+        self._failed_paths: set[str] = set()
+        self._max_failed = 5000
 
     def _build_fetch_url(self, path: str) -> str:
         base = self.internal_url if self.internal_url else self.target_url
@@ -45,7 +48,10 @@ class AssetLearner:
         if not self.enabled:
             return None
 
-        if path in self._pending:
+        if len(self.learned_assets) >= self._max_learned:
+            return None
+
+        if path in self._pending or path in self._failed_paths:
             return None
         self._pending.add(path)
 
@@ -68,6 +74,8 @@ class AssetLearner:
 
             if resp.status_code != 200:
                 self._pending.discard(path)
+                if len(self._failed_paths) < self._max_failed:
+                    self._failed_paths.add(path)
                 return None
 
             content_type = resp.headers.get("content-type", "")

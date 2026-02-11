@@ -40,6 +40,7 @@ SUSPICIOUS_PATH_PATTERNS = [
 BLOCKED_RESPONSE = Response(content="Forbidden", status_code=403, media_type="text/plain")
 RATE_LIMITED_RESPONSE = Response(content="Too Many Requests", status_code=429, media_type="text/plain")
 PAYLOAD_TOO_LARGE = Response(content="Payload Too Large", status_code=413, media_type="text/plain")
+GENERIC_400 = Response(content="Bad Request", status_code=400, media_type="text/plain")
 
 STATIC_ASSET_EXTENSIONS = {
     ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif",
@@ -108,20 +109,25 @@ class WAFMiddleware(BaseHTTPMiddleware):
             return BLOCKED_RESPONSE
 
         content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > self.max_body_size:
-            logger.warning("Blocked oversized request: %s bytes (IP: %s)", content_length, client_ip)
-            return PAYLOAD_TOO_LARGE
+        if content_length:
+            try:
+                if int(content_length) > self.max_body_size:
+                    logger.warning("Blocked oversized request: %s bytes (IP: %s)", content_length, client_ip)
+                    return PAYLOAD_TOO_LARGE
+            except (ValueError, OverflowError):
+                return GENERIC_400
 
         response = await call_next(request)
         return response
 
     def _get_client_ip(self, request: Request) -> str:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
         real_ip = request.headers.get("x-real-ip")
         if real_ip:
             return real_ip.strip()
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            parts = [p.strip() for p in forwarded.split(",")]
+            return parts[-1] if len(parts) > 1 else parts[0]
         return request.client.host if request.client else "0.0.0.0"
 
     def _is_malicious_bot(self, user_agent: str) -> bool:

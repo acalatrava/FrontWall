@@ -1,6 +1,7 @@
+import html as html_mod
 import logging
 import re
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from fastapi import Request
@@ -32,6 +33,7 @@ class PostHandler:
         self.override_host = override_host
         self.learn_mode = False
         self.learned_posts: list[dict] = []
+        self._max_learned = 500
 
     def _build_forward_url(self, path: str) -> str:
         """Build the URL to forward a POST to (internal if configured, otherwise target)."""
@@ -65,11 +67,12 @@ class PostHandler:
             pattern = rule["url_pattern"]
             if pattern == path:
                 return rule
-            try:
-                if re.match(pattern, path):
-                    return rule
-            except re.error:
-                continue
+            if "*" in pattern or "(" in pattern or "[" in pattern:
+                try:
+                    if re.fullmatch(pattern, path, flags=re.IGNORECASE):
+                        return rule
+                except (re.error, RecursionError):
+                    continue
         return None
 
     async def handle_post(self, request: Request) -> Response:
@@ -163,8 +166,13 @@ class PostHandler:
     def _success_response(self, rule: dict) -> Response:
         redirect = rule.get("success_redirect")
         if redirect:
+            parsed = urlparse(redirect)
+            if parsed.scheme and parsed.scheme not in ("http", "https"):
+                redirect = "/"
+            if parsed.netloc and not redirect.startswith("/"):
+                redirect = "/"
             return RedirectResponse(url=redirect, status_code=303)
-        message = rule.get("success_message", "Form submitted successfully.")
+        message = html_mod.escape(rule.get("success_message", "Form submitted successfully."))
         return HTMLResponse(
             content=f"<html><body><p>{message}</p></body></html>",
             status_code=200,
@@ -179,7 +187,7 @@ class PostHandler:
         field_names = []
         already_known = any(p["path"] == path for p in self.learned_posts)
 
-        if not already_known:
+        if not already_known and len(self.learned_posts) < self._max_learned:
             try:
                 import json as _json
                 if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
