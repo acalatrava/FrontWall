@@ -3,8 +3,8 @@ import { ref } from 'vue'
 import api from '../api'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem('ws_token') || '')
   const user = ref(null)
+  const authenticated = ref(false)
 
   async function checkSetup() {
     const { data } = await api.get('/auth/setup-required')
@@ -13,30 +13,49 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function setup(username, password) {
     const { data } = await api.post('/auth/setup', { username, password })
-    token.value = data.access_token
-    localStorage.setItem('ws_token', data.access_token)
+    user.value = { user_id: data.user_id, username: data.username }
+    authenticated.value = true
   }
 
   async function login(username, password) {
     const { data } = await api.post('/auth/login', { username, password })
-    token.value = data.access_token
-    localStorage.setItem('ws_token', data.access_token)
+    user.value = { user_id: data.user_id, username: data.username }
+    authenticated.value = true
   }
 
-  function logout() {
-    token.value = ''
+  async function logout() {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // Ignore logout errors
+    }
     user.value = null
-    localStorage.removeItem('ws_token')
+    authenticated.value = false
   }
 
   async function fetchUser() {
     try {
       const { data } = await api.get('/auth/me')
       user.value = data
+      authenticated.value = true
     } catch {
-      logout()
+      user.value = null
+      authenticated.value = false
     }
   }
 
-  return { token, user, checkSetup, setup, login, logout, fetchUser }
+  async function checkAuth() {
+    try {
+      const { data } = await api.get('/auth/me')
+      user.value = data
+      authenticated.value = true
+      return true
+    } catch {
+      user.value = null
+      authenticated.value = false
+      return false
+    }
+  }
+
+  return { user, authenticated, checkSetup, setup, login, logout, fetchUser, checkAuth }
 })

@@ -12,6 +12,45 @@ Internet → Nginx Proxy Manager (TLS) → Web Shield (port 8080) → Static Cac
                                                           WordPress
 ```
 
+```mermaid
+flowchart TB
+    subgraph internet [Internet]
+        User[Visitor]
+    end
+
+    subgraph nginx [Nginx Proxy Manager]
+        NPM[TLS Termination]
+    end
+
+    subgraph webshield [Web Shield Container]
+        subgraph adminMode [Admin Mode - port 8000]
+            AdminUI[Admin UI - Vue 3]
+            API[FastAPI API]
+            Crawler[Spider Engine]
+        end
+        subgraph prodMode [Shield Mode - port 8080]
+            StaticServer[Static Server]
+            WAF[WAF / Sanitizer]
+            PostProxy[POST Proxy]
+        end
+        DB[(SQLite DB)]
+        Cache[(Static Cache)]
+    end
+
+    subgraph wordpress [WordPress - Internal/Hidden]
+        WP[WordPress Server]
+    end
+
+    User --> NPM --> StaticServer
+    StaticServer -->|static files| Cache
+    StaticServer -->|POST exceptions| WAF --> PostProxy --> WP
+    AdminUI --> API
+    API --> DB
+    API --> Crawler --> WP
+    Crawler --> Cache
+```
+
+
 **Admin UI** runs on port `8000` (internal access only).
 **Shield server** runs on port `8080` (exposed via nginx).
 
@@ -87,18 +126,18 @@ Keep port `8000` **internal only** — do not expose the admin UI publicly.
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `WS_SECRET_KEY` | `change-me-in-production` | JWT signing key (use a strong random value) |
-| `WS_ADMIN_PORT` | `8000` | Admin API + UI port |
-| `WS_SHIELD_PORT` | `8080` | Shield server port |
-| `WS_LOG_LEVEL` | `info` | Logging level |
-| `WS_RATE_LIMIT_REQUESTS` | `60` | Global rate limit (requests per window) |
-| `WS_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit window |
-| `WS_MAX_REQUEST_SIZE_BYTES` | `1048576` | Max request body size (1MB) |
-| `WS_CRAWLER_MAX_CONCURRENCY` | `5` | Max concurrent crawler requests |
-| `WS_CRAWLER_DELAY_SECONDS` | `0.5` | Delay between crawler requests |
-| `WS_CRAWLER_MAX_PAGES` | `10000` | Maximum pages to crawl |
+| Variable                       | Default                   | Description                                 |
+| ------------------------------ | ------------------------- | ------------------------------------------- |
+| `WS_SECRET_KEY`                | `change-me-in-production` | JWT signing key (use a strong random value) |
+| `WS_ADMIN_PORT`                | `8000`                    | Admin API + UI port                         |
+| `WS_SHIELD_PORT`               | `8080`                    | Shield server port                          |
+| `WS_LOG_LEVEL`                 | `info`                    | Logging level                               |
+| `WS_RATE_LIMIT_REQUESTS`       | `60`                      | Global rate limit (requests per window)     |
+| `WS_RATE_LIMIT_WINDOW_SECONDS` | `60`                      | Rate limit window                           |
+| `WS_MAX_REQUEST_SIZE_BYTES`    | `1048576`                 | Max request body size (1MB)                 |
+| `WS_CRAWLER_MAX_CONCURRENCY`   | `5`                       | Max concurrent crawler requests             |
+| `WS_CRAWLER_DELAY_SECONDS`     | `0.5`                     | Delay between crawler requests              |
+| `WS_CRAWLER_MAX_PAGES`         | `10000`                   | Maximum pages to crawl                      |
 
 ## Security
 

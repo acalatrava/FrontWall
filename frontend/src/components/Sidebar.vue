@@ -69,8 +69,8 @@ const navItems = [
   { to: '/shield', label: 'Shield', icon: ShieldIcon },
 ]
 
-function logout() {
-  auth.logout()
+async function logout() {
+  await auth.logout()
   router.push('/login')
 }
 </script>

@@ -60,12 +60,15 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  const auth = useAuthStore()
-
   if (to.meta.public) return true
 
-  if (!auth.token) {
-    return { name: 'login' }
+  const auth = useAuthStore()
+
+  if (!auth.authenticated) {
+    const isValid = await auth.checkAuth()
+    if (!isValid) {
+      return { name: 'login' }
+    }
   }
 
   return true

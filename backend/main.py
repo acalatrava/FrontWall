@@ -1,14 +1,17 @@
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import delete
 
 from config import settings
-from database import init_db
+from database import init_db, async_session
 from services.shield_service import auto_deploy_if_needed
 from api.auth import router as auth_router, get_current_user
 from api.sites import router as sites_router
@@ -16,6 +19,7 @@ from api.pages import router as pages_router
 from api.rules import router as rules_router
 from api.crawler import router as crawler_router, ws_router as crawler_ws_router
 from api.shield import router as shield_router
+from models.refresh_token import RefreshToken
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -24,14 +28,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger("webshield")
 
+_cleanup_task: asyncio.Task | None = None
+
+
+async def _cleanup_expired_tokens():
+    while True:
+        try:
+            await asyncio.sleep(3600)
+            async with async_session() as db:
+                now = datetime.now(timezone.utc)
+                result = await db.execute(
+                    delete(RefreshToken).where(
+                        (RefreshToken.expires_at < now) | (RefreshToken.revoked == True)  # noqa: E712
+                    )
+                )
+                await db.commit()
+                if result.rowcount:
+                    logger.info("Cleaned up %d expired/revoked refresh tokens", result.rowcount)
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            logger.exception("Token cleanup error")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _cleanup_task
     settings.setup_dirs()
     await init_db()
     await auto_deploy_if_needed()
+    _cleanup_task = asyncio.create_task(_cleanup_expired_tokens())
     logger.info("Web Shield started — admin on port %s", settings.admin_port)
     yield
+    if _cleanup_task:
+        _cleanup_task.cancel()
     logger.info("Web Shield shutting down")
 
 
