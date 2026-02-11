@@ -3,6 +3,12 @@ import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
+    path: '/',
+    name: 'landing',
+    component: () => import('../views/LandingView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('../views/LoginView.vue'),
@@ -15,7 +21,25 @@ const routes = [
     meta: { public: true },
   },
   {
-    path: '/',
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: () => import('../views/ForgotPasswordView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/reset-password',
+    name: 'reset-password',
+    component: () => import('../views/ResetPasswordView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/accept-invite',
+    name: 'accept-invite',
+    component: () => import('../views/AcceptInviteView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/dashboard',
     name: 'dashboard',
     component: () => import('../views/DashboardView.vue'),
   },
@@ -57,11 +81,21 @@ const routes = [
     name: 'shield',
     component: () => import('../views/ShieldView.vue'),
   },
+  {
+    path: '/users',
+    name: 'users',
+    component: () => import('../views/UsersView.vue'),
+    meta: { adminOnly: true },
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to) {
+    if (to.hash) return { el: to.hash, behavior: 'smooth' }
+    return { top: 0 }
+  },
 })
 
 router.beforeEach(async (to) => {
@@ -74,6 +108,10 @@ router.beforeEach(async (to) => {
     if (!isValid) {
       return { name: 'login' }
     }
+  }
+
+  if (to.meta.adminOnly && !auth.isAdmin) {
+    return { name: 'dashboard' }
   }
 
   return true

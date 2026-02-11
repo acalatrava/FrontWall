@@ -10,7 +10,7 @@
         <p class="mt-1 text-gray-400">Create your admin account to get started</p>
       </div>
 
-      <form @submit.prevent="handleSetup" class="bg-gray-900 rounded-xl border border-gray-800 p-8 space-y-5">
+      <form @submit.prevent="handleSetup" class="bg-gray-900 rounded-xl border border-gray-800 p-5 sm:p-8 space-y-5">
         <div v-if="error" class="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">
           {{ error }}
         </div>
@@ -24,6 +24,17 @@
             class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="admin"
           />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">Email <span class="text-gray-500 font-normal">(optional)</span></label>
+          <input
+            v-model="email"
+            type="email"
+            class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="admin@example.com"
+          />
+          <p class="mt-1 text-xs text-gray-500">Used for password reset and notifications</p>
         </div>
 
         <div>
@@ -68,6 +79,7 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 const username = ref('')
+const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
@@ -81,8 +93,8 @@ async function handleSetup() {
   }
   loading.value = true
   try {
-    await auth.setup(username.value, password.value)
-    router.push('/')
+    await auth.setup(username.value, password.value, email.value)
+    router.push('/dashboard')
   } catch (e) {
     const detail = e.response?.data?.detail
     if (Array.isArray(detail)) {

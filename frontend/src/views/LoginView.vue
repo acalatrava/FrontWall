@@ -10,9 +10,12 @@
         <p class="mt-1 text-gray-400">Sign in to your admin panel</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="bg-gray-900 rounded-xl border border-gray-800 p-8 space-y-5">
+      <form @submit.prevent="handleLogin" class="bg-gray-900 rounded-xl border border-gray-800 p-5 sm:p-8 space-y-5">
         <div v-if="error" class="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">
           {{ error }}
+        </div>
+        <div v-if="success" class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 text-sm text-emerald-400">
+          {{ success }}
         </div>
 
         <div>
@@ -45,6 +48,26 @@
         >
           {{ loading ? 'Signing in...' : 'Sign In' }}
         </button>
+
+        <div v-if="passkeyAvailable" class="relative">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-800"></div></div>
+          <div class="relative flex justify-center text-xs"><span class="bg-gray-900 px-3 text-gray-500">or</span></div>
+        </div>
+
+        <button
+          v-if="passkeyAvailable"
+          type="button"
+          @click="handlePasskeyLogin"
+          :disabled="passkeyLoading"
+          class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          {{ passkeyLoading ? 'Verifying...' : 'Sign in with Passkey' }}
+        </button>
+
+        <div class="text-center pt-1">
+          <router-link to="/forgot-password" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Forgot password?</router-link>
+        </div>
       </form>
     </div>
   </div>
@@ -52,17 +75,27 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const username = ref('')
 const password = ref('')
 const error = ref('')
+const success = ref('')
 const loading = ref(false)
+const passkeyLoading = ref(false)
+const passkeyAvailable = ref(false)
 
 onMounted(async () => {
+  passkeyAvailable.value = !!(window.PublicKeyCredential && typeof window.PublicKeyCredential === 'function')
+
+  if (route.query.reset === 'ok') {
+    success.value = 'Password reset successfully. Please sign in.'
+  }
+
   try {
     const needsSetup = await auth.checkSetup()
     if (needsSetup) {
@@ -73,10 +106,11 @@ onMounted(async () => {
 
 async function handleLogin() {
   error.value = ''
+  success.value = ''
   loading.value = true
   try {
     await auth.login(username.value, password.value)
-    router.push('/')
+    router.push('/dashboard')
   } catch (e) {
     const detail = e.response?.data?.detail
     if (Array.isArray(detail)) {
@@ -86,6 +120,24 @@ async function handleLogin() {
     }
   } finally {
     loading.value = false
+  }
+}
+
+async function handlePasskeyLogin() {
+  error.value = ''
+  success.value = ''
+  passkeyLoading.value = true
+  try {
+    await auth.loginWithPasskey()
+    router.push('/dashboard')
+  } catch (e) {
+    if (e.name === 'NotAllowedError') {
+      error.value = 'Passkey authentication was cancelled.'
+    } else {
+      error.value = e.response?.data?.detail || 'Passkey authentication failed'
+    }
+  } finally {
+    passkeyLoading.value = false
   }
 }
 </script>

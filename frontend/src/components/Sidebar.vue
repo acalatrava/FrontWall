@@ -1,5 +1,8 @@
 <template>
-  <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
+  <aside
+    class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 ease-in-out"
+    :class="mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+  >
     <div class="p-5 border-b border-gray-800">
       <div class="flex items-center gap-3">
         <svg class="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -10,25 +13,38 @@
       </div>
     </div>
 
-    <nav class="flex-1 p-4 space-y-1">
+    <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
       <router-link
-        v-for="item in navItems"
+        v-for="item in visibleNav"
         :key="item.to"
         :to="item.to"
+        @click="$emit('close')"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
         :class="isActive(item.to) ? 'bg-blue-600/20 text-blue-400' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'"
       >
-        <component :is="item.icon" class="w-5 h-5" />
+        <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
         {{ item.label }}
       </router-link>
     </nav>
 
-    <div class="p-4 border-t border-gray-800">
+    <div class="p-4 border-t border-gray-800 space-y-2">
+      <div class="px-3 py-2">
+        <div class="text-sm font-medium text-white truncate">{{ auth.user?.username }}</div>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <span class="text-xs px-1.5 py-0.5 rounded-full"
+                :class="auth.user?.role === 'admin' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'">
+            {{ auth.user?.role }}
+          </span>
+          <span v-if="auth.user?.has_passkey" class="text-[10px] text-emerald-400">
+            <svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </span>
+        </div>
+      </div>
       <button
-        @click="logout"
+        @click="handleLogout"
         class="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition-colors"
       >
-        <LogoutIcon class="w-5 h-5" />
+        <LogoutIcon class="w-5 h-5 flex-shrink-0" />
         Logout
       </button>
     </div>
@@ -36,9 +52,12 @@
 </template>
 
 <script setup>
-import { h } from 'vue'
+import { h, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+
+defineProps({ mobileOpen: { type: Boolean, default: false } })
+defineEmits(['close'])
 
 const route = useRoute()
 const router = useRouter()
@@ -61,17 +80,23 @@ const SitesIcon = makeIcon(['M12 2L2 7l10 5 10-5-10-5z', 'M2 17l10 5 10-5', 'M2 
 const ShieldIcon = makeIcon('M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z')
 const SecurityIcon = makeIcon(['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M12 8v4', 'M12 16h.01'])
 const AnalyticsIcon = makeIcon(['M18 20V10', 'M12 20V4', 'M6 20v-6'])
+const UsersIcon = makeIcon(['M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2', 'M9 7a4 4 0 100 8 4 4 0 000-8z', 'M23 21v-2a4 4 0 00-3-3.87', 'M16 3.13a4 4 0 010 7.75'])
 const LogoutIcon = makeIcon(['M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4', 'M16 17l5-5-5-5', 'M21 12H9'])
 
-const navItems = [
-  { to: '/', label: 'Dashboard', icon: DashboardIcon },
-  { to: '/sites', label: 'Sites', icon: SitesIcon },
-  { to: '/security', label: 'Security', icon: SecurityIcon },
-  { to: '/analytics', label: 'Analytics', icon: AnalyticsIcon },
-  { to: '/shield', label: 'Shield', icon: ShieldIcon },
+const allNav = [
+  { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon, adminOnly: false },
+  { to: '/sites', label: 'Sites', icon: SitesIcon, adminOnly: false },
+  { to: '/security', label: 'Security', icon: SecurityIcon, adminOnly: false },
+  { to: '/analytics', label: 'Analytics', icon: AnalyticsIcon, adminOnly: false },
+  { to: '/shield', label: 'Shield', icon: ShieldIcon, adminOnly: false },
+  { to: '/users', label: 'Users', icon: UsersIcon, adminOnly: true },
 ]
 
-async function logout() {
+const visibleNav = computed(() =>
+  allNav.filter(item => !item.adminOnly || auth.isAdmin)
+)
+
+async function handleLogout() {
   await auth.logout()
   router.push('/login')
 }

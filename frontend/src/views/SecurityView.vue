@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-white mb-6">Security Settings</h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">Security Settings</h1>
 
     <div v-if="sites.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
       <p class="text-gray-400">No sites configured. <router-link to="/sites" class="text-blue-400 hover:underline">Add a site first.</router-link></p>
@@ -66,7 +66,7 @@
               {{ selectedSite.rate_limit_enabled ? 'Enabled' : 'Disabled' }}
             </span>
           </div>
-          <div v-if="selectedSite.rate_limit_enabled" class="grid grid-cols-2 gap-4 text-sm">
+          <div v-if="selectedSite.rate_limit_enabled" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div class="bg-gray-800/50 rounded-lg p-4">
               <div class="text-gray-400">Requests per window</div>
               <div class="text-white font-mono text-lg mt-1">{{ selectedSite.rate_limit_requests }}</div>

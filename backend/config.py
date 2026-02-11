@@ -23,6 +23,20 @@ class Settings(BaseSettings):
     cookie_samesite: str = "strict"
     cookie_domain: str | None = None
 
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "FrontWall"
+    smtp_use_tls: bool = True
+
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "FrontWall"
+    webauthn_origin: str = "http://localhost:8000"
+
+    base_url: str = "http://localhost:8000"
+
     crawler_max_concurrency: int = 5
     crawler_delay_seconds: float = 0.5
     crawler_timeout_seconds: int = 30

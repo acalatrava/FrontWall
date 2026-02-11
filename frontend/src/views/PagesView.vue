@@ -2,7 +2,7 @@
   <div>
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-white">Cached Pages</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">Cached Pages</h1>
         <p class="text-sm text-gray-400 mt-1">Site: {{ site?.name || siteId }}</p>
       </div>
       <button
@@ -13,7 +13,7 @@
       </button>
     </div>
 
-    <div v-if="stats" class="grid grid-cols-3 gap-4 mb-6">
+    <div v-if="stats" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
         <div class="text-2xl font-bold text-white">{{ stats.total_pages }}</div>
         <div class="text-xs text-gray-400">Total Pages</div>
@@ -29,7 +29,7 @@
     </div>
 
     <div class="bg-gray-900 border border-gray-800 rounded-xl">
-      <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
+      <div class="px-4 sm:px-6 py-4 border-b border-gray-800 flex items-center gap-3">
         <input
           v-model="search"
           placeholder="Filter pages..."
@@ -40,7 +40,7 @@
         No pages found.
       </div>
       <div v-else class="divide-y divide-gray-800 max-h-[600px] overflow-y-auto">
-        <div v-for="page in filteredPages" :key="page.id" class="px-6 py-3 flex items-center justify-between group hover:bg-gray-800/50">
+        <div v-for="page in filteredPages" :key="page.id" class="px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between group hover:bg-gray-800/50">
           <div class="flex-1 min-w-0">
             <div class="text-sm text-white truncate">{{ page.path }}</div>
             <div class="text-xs text-gray-500 flex gap-3 mt-0.5">
@@ -52,7 +52,7 @@
           </div>
           <button
             @click="deletePage(page.id)"
-            class="opacity-0 group-hover:opacity-100 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-all"
+            class="sm:opacity-0 group-hover:opacity-100 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-all self-end sm:self-auto"
           >
             Remove
           </button>

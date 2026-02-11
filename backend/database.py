@@ -16,6 +16,7 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 async def init_db() -> None:
     import models.refresh_token  # noqa: F401
     import models.security_event  # noqa: F401
+    import models.passkey  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_add_missing_columns)
@@ -40,6 +41,18 @@ def _add_missing_columns(conn) -> None:
     _ensure_column(conn, inspector, "sites", "blocked_countries", "TEXT DEFAULT ''")
     _ensure_column(conn, inspector, "post_rules", "allowed_actions", "TEXT")
     _ensure_column(conn, inspector, "sites", "learned_csp_origins", "TEXT DEFAULT ''")
+
+    _ensure_column(conn, inspector, "admin_users", "email", "VARCHAR(320)")
+    _ensure_column(conn, inspector, "admin_users", "role", "VARCHAR(20) DEFAULT 'admin'")
+    _ensure_column(conn, inspector, "admin_users", "is_active", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "admin_users", "email_verified", "BOOLEAN DEFAULT 0")
+    _ensure_column(conn, inspector, "admin_users", "invite_token_hash", "VARCHAR(64)")
+    _ensure_column(conn, inspector, "admin_users", "invite_expires", "DATETIME")
+    _ensure_column(conn, inspector, "admin_users", "reset_token_hash", "VARCHAR(64)")
+    _ensure_column(conn, inspector, "admin_users", "reset_expires", "DATETIME")
+    _ensure_column(conn, inspector, "admin_users", "failed_logins", "INTEGER DEFAULT 0")
+    _ensure_column(conn, inspector, "admin_users", "locked_until", "DATETIME")
+    _ensure_column(conn, inspector, "admin_users", "last_login", "DATETIME")
 
 
 def _ensure_column(conn, inspector, table: str, column: str, col_type: str) -> None:

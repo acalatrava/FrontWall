@@ -2,7 +2,7 @@
   <div>
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-white">POST Exception Rules</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">POST Exception Rules</h1>
         <p class="text-sm text-gray-400 mt-1">Site: {{ site?.name || siteId }}</p>
       </div>
       <button
@@ -80,7 +80,7 @@
       <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-2xl p-6 mx-4">
         <h2 class="text-xl font-bold text-white mb-4">{{ editingRule ? 'Edit Rule' : 'Create POST Rule' }}</h2>
         <form @submit.prevent="handleSave" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">Rule Name</label>
               <input v-model="form.name" required class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contact Form" />
@@ -94,7 +94,7 @@
             <label class="block text-sm font-medium text-gray-300 mb-1">Forward To (WordPress URL)</label>
             <input v-model="form.forward_to" required type="url" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://mysite.com/wp-admin/admin-post.php" />
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">Success Redirect</label>
               <input v-model="form.success_redirect" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="/thank-you" />
@@ -104,7 +104,7 @@
               <input v-model="form.honeypot_field" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="website_url" />
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">Rate Limit (requests)</label>
               <input v-model.number="form.rate_limit_requests" type="number" min="1" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -121,7 +121,7 @@
               <button type="button" @click="addField" class="text-xs text-blue-400 hover:text-blue-300">+ Add Field</button>
             </div>
             <div class="space-y-2">
-              <div v-for="(field, idx) in form.fields" :key="idx" class="flex gap-2 items-start">
+              <div v-for="(field, idx) in form.fields" :key="idx" class="flex flex-wrap sm:flex-nowrap gap-2 items-start">
                 <input v-model="field.field_name" placeholder="Field name" class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <select v-model="field.field_type" class="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="text">text</option>

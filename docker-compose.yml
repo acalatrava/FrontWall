@@ -13,6 +13,18 @@ services:
       - WS_LOG_LEVEL=info
       - WS_DATA_DIR=/app/data
       - WS_COOKIE_SECURE=false
+      # SMTP for invites and password resets (optional)
+      # - WS_SMTP_HOST=smtp.example.com
+      # - WS_SMTP_PORT=587
+      # - WS_SMTP_USER=your@email.com
+      # - WS_SMTP_PASSWORD=secret
+      # - WS_SMTP_FROM_EMAIL=noreply@example.com
+      # - WS_SMTP_FROM_NAME=FrontWall
+      # WebAuthn / Passkey (adjust for your domain)
+      # - WS_WEBAUTHN_RP_ID=yourdomain.com
+      # - WS_WEBAUTHN_RP_NAME=FrontWall
+      # - WS_WEBAUTHN_ORIGIN=https://yourdomain.com
+      # - WS_BASE_URL=https://yourdomain.com
     restart: unless-stopped
     healthcheck:
       test:

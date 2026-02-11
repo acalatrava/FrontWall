@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-white mb-6">Shield Deployment</h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">Shield Deployment</h1>
 
     <div v-if="sites.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
       <p class="text-gray-400 mb-4">No sites configured.</p>
@@ -13,20 +13,20 @@
         :key="site.id"
         class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden"
       >
-        <div class="px-6 py-5 flex items-center justify-between">
+        <div class="px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
           <div class="flex items-center gap-4">
             <div
-              class="w-12 h-12 rounded-full flex items-center justify-center"
+              class="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0"
               :class="isActive(site.id) ? 'bg-green-500/20' : 'bg-gray-800'"
             >
-              <svg class="w-6 h-6" :class="isActive(site.id) ? 'text-green-400' : 'text-gray-600'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="w-5 h-5 sm:w-6 sm:h-6" :class="isActive(site.id) ? 'text-green-400' : 'text-gray-600'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 <path v-if="isActive(site.id)" d="m9 12 2 2 4-4" stroke="currentColor"/>
               </svg>
             </div>
-            <div>
-              <h2 class="text-lg font-semibold text-white">{{ site.name }}</h2>
-              <p class="text-sm text-gray-400">{{ site.target_url }}</p>
+            <div class="min-w-0">
+              <h2 class="text-base sm:text-lg font-semibold text-white truncate">{{ site.name }}</h2>
+              <p class="text-sm text-gray-400 truncate">{{ site.target_url }}</p>
               <p v-if="isActive(site.id)" class="text-xs text-green-400 mt-1">
                 Serving on port {{ getShieldPort(site.id) || site.shield_port }}
               </p>
@@ -35,7 +35,7 @@
               </p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 self-end sm:self-auto flex-shrink-0">
             <button
               v-if="isActive(site.id)"
               @click="handleUndeploy(site.id)"
@@ -56,7 +56,7 @@
         </div>
 
         <div v-if="isActive(site.id)" class="border-t border-gray-800">
-          <div class="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div class="px-4 sm:px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <span class="text-gray-400">Shield Port:</span>
               <code class="ml-2 bg-gray-800 px-2 py-0.5 rounded text-blue-400">{{ getShieldPort(site.id) || site.shield_port }}</code>
@@ -69,8 +69,8 @@
             </div>
           </div>
 
-          <div class="px-6 py-4 border-t border-gray-800">
-            <div class="flex items-center justify-between mb-3">
+          <div class="px-4 sm:px-6 py-4 border-t border-gray-800">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
               <div>
                 <h3 class="text-sm font-semibold text-white">Learn Mode</h3>
                 <p class="text-xs text-gray-500 mt-0.5">Auto-captures POST rules, 404 assets, and CSP-blocked domains from the browser</p>

@@ -1,14 +1,14 @@
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-white mb-6">Security Analytics</h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">Security Analytics</h1>
 
     <div v-if="sites.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
       <p class="text-gray-400">No sites configured. <router-link to="/sites" class="text-blue-400 hover:underline">Add a site first.</router-link></p>
     </div>
 
     <template v-else>
-      <div class="flex items-center gap-4 mb-6">
-        <div class="flex-1 max-w-md">
+      <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+        <div class="flex-1 sm:max-w-md">
           <label class="block text-sm font-medium text-gray-300 mb-2">Select Site</label>
           <select
             v-model="selectedSiteId"
@@ -17,7 +17,7 @@
             <option v-for="site in sites" :key="site.id" :value="site.id">{{ site.name }}</option>
           </select>
         </div>
-        <div class="flex gap-2 mt-7">
+        <div class="flex gap-2 flex-wrap">
           <button
             v-for="opt in timeRangeOptions"
             :key="opt.value"
@@ -124,22 +124,22 @@
                 <tr class="border-b border-gray-800">
                   <th class="text-left py-3 px-4 text-gray-400 font-medium">IP Address</th>
                   <th class="text-left py-3 px-4 text-gray-400 font-medium">Events</th>
-                  <th class="text-left py-3 px-4 text-gray-400 font-medium">Last Seen</th>
-                  <th class="text-left py-3 px-4 text-gray-400 font-medium">Top Attack</th>
+                  <th class="text-left py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">Last Seen</th>
+                  <th class="text-left py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">Top Attack</th>
                   <th class="text-left py-3 px-4 text-gray-400 font-medium">Severity</th>
-                  <th class="text-right py-3 px-4 text-gray-400 font-medium">Action</th>
+                  <th class="text-right py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">Action</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="attacker in attackers" :key="attacker.ip" class="border-b border-gray-800/50 hover:bg-gray-800/30">
                   <td class="py-3 px-4 font-mono text-white">{{ attacker.ip }}</td>
                   <td class="py-3 px-4 text-white font-semibold">{{ attacker.count }}</td>
-                  <td class="py-3 px-4 text-gray-400">{{ formatTime(attacker.last_seen) }}</td>
-                  <td class="py-3 px-4 text-gray-300">{{ formatEventType(attacker.top_event_type) }}</td>
+                  <td class="py-3 px-4 text-gray-400 hidden sm:table-cell">{{ formatTime(attacker.last_seen) }}</td>
+                  <td class="py-3 px-4 text-gray-300 hidden sm:table-cell">{{ formatEventType(attacker.top_event_type) }}</td>
                   <td class="py-3 px-4">
                     <span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="severityBadge(attacker.severity)">{{ attacker.severity }}</span>
                   </td>
-                  <td class="py-3 px-4 text-right">
+                  <td class="py-3 px-4 text-right hidden sm:table-cell">
                     <button
                       @click="blockIP(attacker.ip)"
                       class="px-3 py-1 text-xs font-medium text-red-400 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"
@@ -168,15 +168,21 @@
             <div
               v-for="(event, idx) in recentEvents"
               :key="idx"
-              class="flex items-center gap-3 px-4 py-3 bg-gray-800/40 rounded-lg hover:bg-gray-800/60 transition-colors"
+              class="px-3 sm:px-4 py-3 bg-gray-800/40 rounded-lg hover:bg-gray-800/60 transition-colors"
             >
-              <span class="w-2 h-2 rounded-full flex-shrink-0" :class="severityDot(event.severity)"></span>
-              <span class="text-xs text-gray-500 font-mono w-16 flex-shrink-0">{{ formatShortTime(event.timestamp) }}</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase flex-shrink-0" :class="methodBadge(event.method)">{{ event.method }}</span>
-              <span class="text-xs text-gray-300 flex-shrink-0 w-28 truncate">{{ formatEventType(event.event_type) }}</span>
-              <span class="text-xs font-mono text-gray-400 flex-shrink-0 w-28 truncate">{{ event.client_ip }}</span>
-              <span class="text-xs text-gray-500 truncate flex-1">{{ event.path }}</span>
-              <span class="text-xs text-gray-600 truncate max-w-[200px] hidden xl:inline">{{ event.user_agent }}</span>
+              <div class="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+                <span class="w-2 h-2 rounded-full flex-shrink-0" :class="severityDot(event.severity)"></span>
+                <span class="text-xs text-gray-500 font-mono flex-shrink-0">{{ formatShortTime(event.timestamp) }}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase flex-shrink-0" :class="methodBadge(event.method)">{{ event.method }}</span>
+                <span class="text-xs text-gray-300 flex-shrink-0 truncate">{{ formatEventType(event.event_type) }}</span>
+                <span class="text-xs font-mono text-gray-400 flex-shrink-0 truncate hidden sm:inline">{{ event.client_ip }}</span>
+                <span class="text-xs text-gray-500 truncate flex-1 hidden sm:inline">{{ event.path }}</span>
+                <span class="text-xs text-gray-600 truncate max-w-[200px] hidden xl:inline">{{ event.user_agent }}</span>
+              </div>
+              <div class="sm:hidden mt-1.5 flex items-center gap-2 text-xs">
+                <span class="font-mono text-gray-400">{{ event.client_ip }}</span>
+                <span class="text-gray-600 truncate">{{ event.path }}</span>
+              </div>
             </div>
             <div v-if="recentEvents.length === 0" class="py-8 text-center text-gray-500">No events yet</div>
           </div>

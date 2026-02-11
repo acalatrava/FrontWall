@@ -1,11 +1,11 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-white">Crawler</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">Crawler</h1>
         <p class="text-sm text-gray-400 mt-1">Site: {{ site?.name || siteId }}</p>
       </div>
-      <div class="flex gap-3">
+      <div class="flex gap-2 sm:gap-3">
         <button
           v-if="!isCrawling"
           @click="startCrawl"
@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    <div v-if="progress" class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+    <div v-if="progress" class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6 mb-6">
       <h2 class="text-lg font-semibold text-white mb-4">Crawl Progress</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div class="text-center">
@@ -53,14 +53,14 @@
     </div>
 
     <div class="bg-gray-900 border border-gray-800 rounded-xl">
-      <div class="px-6 py-4 border-b border-gray-800">
+      <div class="px-4 sm:px-6 py-4 border-b border-gray-800">
         <h2 class="text-lg font-semibold text-white">Crawl History</h2>
       </div>
-      <div v-if="jobs.length === 0" class="p-6 text-center text-gray-500">
+      <div v-if="jobs.length === 0" class="p-4 sm:p-6 text-center text-gray-500">
         No crawl jobs yet. Start a crawl to begin caching the site.
       </div>
       <div v-else class="divide-y divide-gray-800">
-        <div v-for="job in jobs" :key="job.id" class="px-6 py-4">
+        <div v-for="job in jobs" :key="job.id" class="px-4 sm:px-6 py-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <span
