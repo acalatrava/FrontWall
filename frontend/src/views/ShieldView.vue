@@ -73,7 +73,7 @@
             <div class="flex items-center justify-between mb-3">
               <div>
                 <h3 class="text-sm font-semibold text-white">Learn Mode</h3>
-                <p class="text-xs text-gray-500 mt-0.5">Auto-captures missing POST rules and 404 assets from the origin</p>
+                <p class="text-xs text-gray-500 mt-0.5">Auto-captures POST rules, 404 assets, and CSP-blocked domains from the browser</p>
               </div>
               <label class="flex items-center cursor-pointer">
                 <div class="relative">
@@ -119,8 +119,22 @@
               </div>
             </div>
 
+            <div v-if="(siteLearnedCsp[site.id] || []).length > 0" class="mb-3">
+              <h4 class="text-xs font-medium text-gray-300 mb-1.5">
+                Learned CSP Origins ({{ siteLearnedCsp[site.id].length }})
+                <span class="text-gray-500 font-normal ml-1">— will be included in CSP on next deploy</span>
+              </h4>
+              <div class="flex flex-wrap gap-1.5 bg-gray-800/50 rounded-lg p-3">
+                <span
+                  v-for="(origin, idx) in siteLearnedCsp[site.id]"
+                  :key="idx"
+                  class="px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded text-xs font-mono"
+                >{{ origin }}</span>
+              </div>
+            </div>
+
             <div
-              v-if="getLearnMode(site.id) && !(siteLearnedPosts[site.id] || []).length && !(siteLearnedAssets[site.id] || []).length"
+              v-if="getLearnMode(site.id) && !(siteLearnedPosts[site.id] || []).length && !(siteLearnedAssets[site.id] || []).length && !(siteLearnedCsp[site.id] || []).length"
               class="text-xs text-gray-500 bg-gray-800/50 rounded-lg p-3 text-center"
             >
               Waiting for traffic...
@@ -149,6 +163,7 @@ const { sites } = storeToRefs(sitesStore)
 const deployError = ref('')
 const siteLearnedPosts = reactive({})
 const siteLearnedAssets = reactive({})
+const siteLearnedCsp = reactive({})
 let learnPollTimer = null
 
 function formatSize(bytes) {
@@ -176,12 +191,14 @@ async function fetchAllLearnedData() {
   for (const shield of shieldStore.shields) {
     if (!shield.learn_mode) continue
     try {
-      const [posts, assets] = await Promise.all([
+      const [posts, assets, csp] = await Promise.all([
         api.get(`/shield/learned-posts/${shield.site_id}`),
         api.get(`/shield/learned-assets/${shield.site_id}`),
+        api.get(`/shield/learned-csp/${shield.site_id}`),
       ])
       siteLearnedPosts[shield.site_id] = posts.data
       siteLearnedAssets[shield.site_id] = assets.data
+      siteLearnedCsp[shield.site_id] = csp.data
     } catch {}
   }
 }
@@ -226,6 +243,7 @@ async function handleUndeploy(siteId) {
     await shieldStore.undeploy(siteId)
     delete siteLearnedPosts[siteId]
     delete siteLearnedAssets[siteId]
+    delete siteLearnedCsp[siteId]
   } catch (e) {
     deployError.value = e.response?.data?.detail || 'Failed to undeploy shield'
   }

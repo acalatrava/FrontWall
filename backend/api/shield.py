@@ -66,3 +66,8 @@ async def learned_posts(site_id: str):
 @router.get("/learned-assets/{site_id}")
 async def learned_assets(site_id: str):
     return shield_service.get_learned_assets(site_id)
+
+
+@router.get("/learned-csp/{site_id}")
+async def learned_csp(site_id: str):
+    return shield_service.get_learned_csp_origins(site_id)

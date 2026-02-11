@@ -302,6 +302,13 @@ def get_learned_assets(site_id: str) -> list[dict]:
     return list(inst.asset_learner.learned_assets)
 
 
+def get_learned_csp_origins(site_id: str) -> list[str]:
+    inst = _shields.get(site_id)
+    if inst is None:
+        return []
+    return sorted(inst.csp_learner.learned_origins)
+
+
 async def auto_deploy_if_needed() -> None:
     async with async_session() as db:
         result = await db.execute(select(Site).where(Site.shield_active == True))
