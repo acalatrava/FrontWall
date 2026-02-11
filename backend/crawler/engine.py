@@ -35,6 +35,8 @@ class CrawlerEngine:
         respect_robots: bool = True,
         auth: tuple[str, str] | None = None,
         progress_callback: Callable[[dict[str, Any]], Any] | None = None,
+        internal_url: str | None = None,
+        override_host: str | None = None,
     ):
         self.site_id = site_id
         self.target_url = target_url.rstrip("/")
@@ -45,6 +47,9 @@ class CrawlerEngine:
         self.respect_robots = respect_robots
         self.auth = auth
         self.progress_callback = progress_callback
+
+        self.internal_url = internal_url.rstrip("/") if internal_url else None
+        self.override_host = override_host or urlparse(self.target_url).netloc
 
         self.rewriter = URLRewriter(self.target_url)
         self.visited: set[str] = set()
@@ -59,6 +64,16 @@ class CrawlerEngine:
         self.error_log: list[str] = []
         self._stop_event = asyncio.Event()
         self._downloaded_assets: set[str] = set()
+
+    def _to_fetch_url(self, url: str) -> str:
+        """Convert a public-facing URL to the actual fetch URL (internal if configured)."""
+        if not self.internal_url:
+            return url
+        parsed = urlparse(url)
+        internal_parsed = urlparse(self.internal_url)
+        return f"{internal_parsed.scheme}://{internal_parsed.netloc}{parsed.path}" + (
+            f"?{parsed.query}" if parsed.query else ""
+        )
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -76,6 +91,17 @@ class CrawlerEngine:
             result = self.progress_callback(data)
             if asyncio.iscoroutine(result):
                 await result
+
+    @staticmethod
+    def _is_directory_listing(html: str) -> bool:
+        lower = html[:4096].lower()
+        if "<title>index of " in lower or "<title>index of/" in lower:
+            return True
+        if ">[to parent directory]<" in lower:
+            return True
+        if '<pre><img alt="[' in lower and 'parent directory' in lower:
+            return True
+        return False
 
     def _is_allowed(self, url: str) -> bool:
         parsed = urlparse(url)
@@ -138,19 +164,32 @@ class CrawlerEngine:
             self.visited.add(url)
 
             try:
-                resp = await client.get(url, follow_redirects=True, timeout=30)
+                fetch_url = self._to_fetch_url(url)
+                resp = await client.get(fetch_url, follow_redirects=True, timeout=30)
                 content_type = resp.headers.get("content-type", "")
 
                 if "text/html" not in content_type:
                     return
 
                 html = resp.text
+
+                if self._is_directory_listing(html):
+                    logger.debug("Skipping directory listing: %s", url)
+                    return
+
                 cache_path = self.rewriter.url_to_cache_path(url)
                 full_path = self.cache_dir / cache_path
                 full_path.parent.mkdir(parents=True, exist_ok=True)
 
                 rewritten_html = self.rewriter.rewrite_html(html)
                 full_path.write_text(rewritten_html, encoding="utf-8")
+
+                clean_path = self.rewriter.url_to_cache_path_no_query(url)
+                if clean_path != cache_path:
+                    clean_full = self.cache_dir / clean_path
+                    if not clean_full.exists():
+                        clean_full.parent.mkdir(parents=True, exist_ok=True)
+                        clean_full.write_text(rewritten_html, encoding="utf-8")
 
                 forms_json = detect_forms(html, url)
 
@@ -178,10 +217,11 @@ class CrawlerEngine:
                 await self._emit_progress()
 
                 asset_urls = extract_asset_urls(html, url)
+                translator = self._to_fetch_url if self.internal_url else None
                 for asset_url in asset_urls:
                     if asset_url not in self._downloaded_assets and self.rewriter.is_same_origin(asset_url):
                         self._downloaded_assets.add(asset_url)
-                        size = await download_asset(client, asset_url, self.cache_dir, self.rewriter)
+                        size = await download_asset(client, asset_url, self.cache_dir, self.rewriter, translator)
                         if size > 0:
                             self.assets_downloaded += 1
 
@@ -215,9 +255,14 @@ class CrawlerEngine:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
         }
+        if self.internal_url:
+            headers["Host"] = self.override_host
+
         auth = None
         if self.auth:
             auth = httpx.BasicAuth(self.auth[0], self.auth[1])
+
+        base_url = self.internal_url or self.target_url
 
         async with httpx.AsyncClient(
             headers=headers,
@@ -226,7 +271,7 @@ class CrawlerEngine:
             http2=True,
         ) as client:
             sitemap_urls, self.disallowed_paths = await discover_urls_from_sitemaps(
-                client, self.target_url, self.respect_robots
+                client, base_url, self.respect_robots
             )
 
             self.queue.append(self.target_url)

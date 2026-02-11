@@ -67,6 +67,14 @@ async def crawl_status(site_id: str):
     return {"is_crawling": crawl_service.is_crawling(site_id)}
 
 
+@router.get("/progress/{site_id}")
+async def crawl_progress(site_id: str):
+    progress = crawl_service.get_progress(site_id)
+    if progress is None:
+        return {"is_crawling": False, "progress": None}
+    return {"is_crawling": True, "progress": progress}
+
+
 @ws_router.websocket("/ws/{site_id}")
 async def crawl_websocket(websocket: WebSocket, site_id: str):
     await websocket.accept()

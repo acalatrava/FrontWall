@@ -93,6 +93,7 @@ const jobs = ref([])
 const isCrawling = ref(false)
 const starting = ref(false)
 const progress = ref(null)
+let pollTimer = null
 let ws = null
 
 const progressPercent = computed(() => {
@@ -126,9 +127,37 @@ async function loadData() {
     jobs.value = jobsResp.data
     isCrawling.value = statusResp.data.is_crawling
     if (isCrawling.value) {
+      startPolling()
       connectWebSocket()
     }
   } catch {}
+}
+
+async function pollProgress() {
+  try {
+    const resp = await api.get(`/crawler/progress/${props.siteId}`)
+    if (resp.data.is_crawling && resp.data.progress) {
+      progress.value = resp.data.progress
+    } else if (!resp.data.is_crawling) {
+      stopPolling()
+      isCrawling.value = false
+      progress.value = null
+      await loadData()
+    }
+  } catch {}
+}
+
+function startPolling() {
+  if (pollTimer) return
+  pollProgress()
+  pollTimer = setInterval(pollProgress, 1500)
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
 }
 
 function connectWebSocket() {
@@ -136,16 +165,19 @@ function connectWebSocket() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   ws = new WebSocket(`${proto}://${location.host}/api/crawler/ws/${props.siteId}`)
   ws.onmessage = (e) => {
-    progress.value = JSON.parse(e.data)
+    const data = JSON.parse(e.data)
+    progress.value = data
+    if (data.finished) {
+      isCrawling.value = false
+      stopPolling()
+      loadData()
+    }
   }
   ws.onclose = () => {
-    setTimeout(async () => {
-      if (isCrawling.value) {
-        connectWebSocket()
-      } else {
-        await loadData()
-      }
-    }, 2000)
+    ws = null
+  }
+  ws.onerror = () => {
+    ws = null
   }
 }
 
@@ -154,8 +186,9 @@ async function startCrawl() {
   try {
     await api.post(`/crawler/start/${props.siteId}`)
     isCrawling.value = true
+    progress.value = { pages_found: 0, pages_crawled: 0, assets_downloaded: 0, errors: 0 }
+    startPolling()
     connectWebSocket()
-    await loadData()
   } catch (e) {
     alert(e.response?.data?.detail || 'Failed to start crawl')
   } finally {
@@ -167,6 +200,8 @@ async function stopCrawl() {
   try {
     await api.post(`/crawler/stop/${props.siteId}`)
     isCrawling.value = false
+    stopPolling()
+    await loadData()
   } catch {}
 }
 
@@ -175,6 +210,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopPolling()
   if (ws) ws.close()
 })
 </script>

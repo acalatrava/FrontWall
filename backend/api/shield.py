@@ -38,4 +38,18 @@ async def status():
     return {
         "active": shield_service.is_shield_active(),
         "port": settings.shield_port,
+        "learn_mode": shield_service.is_learn_mode(),
     }
+
+
+@router.post("/learn-mode")
+async def toggle_learn_mode(enabled: bool = True):
+    if not shield_service.is_shield_active():
+        raise HTTPException(status_code=400, detail="Shield is not active")
+    shield_service.set_learn_mode(enabled)
+    return {"learn_mode": enabled}
+
+
+@router.get("/learned-posts")
+async def learned_posts():
+    return shield_service.get_learned_posts()

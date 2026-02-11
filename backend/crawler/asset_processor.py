@@ -1,10 +1,15 @@
 import logging
 import mimetypes
 from pathlib import Path
+from typing import Callable
 from urllib.parse import urlparse, urljoin
 
+import warnings
+
 import httpx
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from crawler.url_rewriter import URLRewriter
 
@@ -75,6 +80,7 @@ async def download_asset(
     url: str,
     cache_dir: Path,
     rewriter: URLRewriter,
+    url_translator: "Callable[[str], str] | None" = None,
 ) -> int:
     """Download a single asset and store it in the cache directory.
     Returns size in bytes, or 0 on failure.
@@ -83,7 +89,8 @@ async def download_asset(
         return 0
 
     try:
-        resp = await client.get(url, follow_redirects=True, timeout=30)
+        fetch_url = url_translator(url) if url_translator else url
+        resp = await client.get(fetch_url, follow_redirects=True, timeout=30)
         if resp.status_code != 200:
             logger.debug("Asset %s returned status %d", url, resp.status_code)
             return 0
@@ -102,11 +109,19 @@ async def download_asset(
             sub_urls = extract_css_asset_urls(text, url)
             for sub_url in sub_urls:
                 if rewriter.is_same_origin(sub_url):
-                    await download_asset(client, sub_url, cache_dir, rewriter)
+                    await download_asset(client, sub_url, cache_dir, rewriter, url_translator)
 
             content = text.encode("utf-8")
 
         full_path.write_bytes(content)
+
+        clean_path = rewriter.url_to_cache_path_no_query(url)
+        if clean_path != cache_path:
+            clean_full = cache_dir / clean_path
+            if not clean_full.exists():
+                clean_full.parent.mkdir(parents=True, exist_ok=True)
+                clean_full.write_bytes(content)
+
         return len(content)
 
     except Exception as exc:

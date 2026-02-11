@@ -11,12 +11,22 @@ class SiteCreate(BaseModel):
     respect_robots_txt: bool = True
     auth_user: str | None = None
     auth_password: str | None = None
+    internal_url: str | None = None
+    override_host: str | None = None
 
     @field_validator("target_url")
     @classmethod
     def validate_url(cls, v: str) -> str:
         HttpUrl(v)
         return v.rstrip("/")
+
+    @field_validator("internal_url")
+    @classmethod
+    def validate_internal_url(cls, v: str | None) -> str | None:
+        if v is not None and v.strip():
+            HttpUrl(v)
+            return v.rstrip("/")
+        return None
 
 
 class SiteUpdate(BaseModel):
@@ -29,6 +39,8 @@ class SiteUpdate(BaseModel):
     respect_robots_txt: bool | None = None
     auth_user: str | None = None
     auth_password: str | None = None
+    internal_url: str | None = None
+    override_host: str | None = None
 
     @field_validator("target_url")
     @classmethod
@@ -37,6 +49,14 @@ class SiteUpdate(BaseModel):
             HttpUrl(v)
             return v.rstrip("/")
         return v
+
+    @field_validator("internal_url")
+    @classmethod
+    def validate_internal_url(cls, v: str | None) -> str | None:
+        if v is not None and v.strip():
+            HttpUrl(v)
+            return v.rstrip("/")
+        return None
 
 
 class SiteResponse(BaseModel):
@@ -49,6 +69,8 @@ class SiteResponse(BaseModel):
     crawl_max_pages: int
     respect_robots_txt: bool
     auth_user: str | None
+    internal_url: str | None
+    override_host: str | None
     shield_active: bool
     created_at: datetime
     updated_at: datetime

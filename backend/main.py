@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from database import init_db
+from services.shield_service import auto_deploy_if_needed
 from api.auth import router as auth_router, get_current_user
 from api.sites import router as sites_router
 from api.pages import router as pages_router
@@ -28,6 +29,7 @@ logger = logging.getLogger("webshield")
 async def lifespan(app: FastAPI):
     settings.setup_dirs()
     await init_db()
+    await auto_deploy_if_needed()
     logger.info("Web Shield started — admin on port %s", settings.admin_port)
     yield
     logger.info("Web Shield shutting down")

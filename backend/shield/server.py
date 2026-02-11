@@ -1,11 +1,13 @@
 import logging
 import mimetypes
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, Response
 
 from config import settings
+from crawler.url_rewriter import URLRewriter
 from shield.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger("webshield.shield.server")
@@ -39,7 +41,45 @@ def _is_path_safe(path: str) -> bool:
     return True
 
 
-def create_shield_app(site_id: str | None = None) -> FastAPI:
+def _resolve_cache_file(cache_root: Path, path: str, query: str = "") -> Path:
+    """Resolve a request path to a cached file, with query string fallback."""
+
+    def _try_path(p: str) -> Path | None:
+        if not p or p.endswith("/"):
+            candidate = cache_root / p / "index.html"
+        else:
+            candidate = cache_root / p
+            if candidate.is_dir():
+                candidate = candidate / "index.html"
+            elif not candidate.exists():
+                alt = cache_root / p / "index.html"
+                if alt.exists():
+                    candidate = alt
+        if candidate.exists() and candidate.is_file():
+            return candidate
+        return None
+
+    if query:
+        safe_query = quote(query, safe="")
+        base = path.strip("/") or "index.html"
+        if "." in base.split("/")[-1]:
+            name_parts = base.rsplit(".", 1)
+            query_path = f"{name_parts[0]}_{safe_query}.{name_parts[1]}"
+        else:
+            query_path = f"{base}/index.html".replace("/index.html", f"_{safe_query}/index.html")
+
+        result = _try_path(query_path)
+        if result:
+            return result
+
+    result = _try_path(path)
+    if result:
+        return result
+
+    return cache_root / path / "index.html" if not path or path.endswith("/") else cache_root / path
+
+
+def create_shield_app(site_id: str | None = None, csp: str | None = None) -> FastAPI:
     """Create a hardened FastAPI app that serves cached static files."""
 
     shield = FastAPI(
@@ -49,7 +89,7 @@ def create_shield_app(site_id: str | None = None) -> FastAPI:
         openapi_url=None,
     )
 
-    shield.add_middleware(SecurityHeadersMiddleware)
+    shield.add_middleware(SecurityHeadersMiddleware, csp=csp)
 
     @shield.api_route("/{path:path}", methods=["GET", "HEAD"])
     async def serve_static(request: Request, path: str = ""):
@@ -70,16 +110,8 @@ def create_shield_app(site_id: str | None = None) -> FastAPI:
         else:
             cache_root = Path(settings.cache_dir)
 
-        if not path or path.endswith("/"):
-            file_path = cache_root / path / "index.html"
-        else:
-            file_path = cache_root / path
-            if file_path.is_dir():
-                file_path = file_path / "index.html"
-            elif not file_path.exists():
-                file_path_with_html = cache_root / path / "index.html"
-                if file_path_with_html.exists():
-                    file_path = file_path_with_html
+        query = request.url.query
+        file_path = _resolve_cache_file(cache_root, path, query)
 
         try:
             resolved = file_path.resolve()

@@ -15,10 +15,45 @@ logger = logging.getLogger("webshield.shield.post_handler")
 class PostHandler:
     """Handles POST exceptions: validates, sanitizes, and forwards to the original WordPress."""
 
-    def __init__(self, rate_limiter: RateLimiter):
+    def __init__(
+        self,
+        rate_limiter: RateLimiter,
+        site_id: str = "",
+        target_url: str = "",
+        internal_url: str | None = None,
+        override_host: str | None = None,
+    ):
         self.sanitizer = InputSanitizer()
         self.rate_limiter = rate_limiter
         self.rules: list[dict] = []
+        self.site_id = site_id
+        self.target_url = target_url.rstrip("/")
+        self.internal_url = internal_url.rstrip("/") if internal_url else None
+        self.override_host = override_host
+        self.learn_mode = False
+        self.learned_posts: list[dict] = []
+
+    def _build_forward_url(self, path: str) -> str:
+        """Build the URL to forward a POST to (internal if configured, otherwise target)."""
+        base = self.internal_url if self.internal_url else self.target_url
+        return base + path
+
+    def _get_forward_headers(self, request: Request, client_ip: str) -> dict:
+        """Build headers for the forwarded request, including Host override."""
+        content_type = request.headers.get("content-type", "")
+        fwd_headers = {
+            "Content-Type": content_type,
+            "X-Forwarded-For": client_ip,
+            "X-Forwarded-Proto": request.url.scheme,
+            "User-Agent": request.headers.get("user-agent", "WebShield/1.0"),
+        }
+        if self.internal_url and self.override_host:
+            fwd_headers["Host"] = self.override_host
+        if request.headers.get("x-requested-with"):
+            fwd_headers["X-Requested-With"] = request.headers["x-requested-with"]
+        if request.headers.get("accept"):
+            fwd_headers["Accept"] = request.headers["accept"]
+        return fwd_headers
 
     def load_rules(self, rules: list[dict]) -> None:
         self.rules = rules
@@ -43,6 +78,8 @@ class PostHandler:
 
         rule = self.find_matching_rule(path)
         if not rule:
+            if self.learn_mode:
+                return await self._learn_and_forward(request, path, client_ip)
             logger.warning("POST to unregistered path: %s (IP: %s)", path, client_ip)
             return Response(content="Method Not Allowed", status_code=405, media_type="text/plain")
 
@@ -56,8 +93,10 @@ class PostHandler:
             logger.warning("POST rate limit hit: %s (IP: %s)", path, client_ip)
             return Response(content="Too Many Requests", status_code=429, media_type="text/plain")
 
+        body = await request.body()
+        content_type = request.headers.get("content-type", "")
+
         try:
-            content_type = request.headers.get("content-type", "")
             if "application/x-www-form-urlencoded" in content_type:
                 form_data = await request.form()
                 raw_data = {k: str(v) for k, v in form_data.items()}
@@ -86,19 +125,13 @@ class PostHandler:
                 status_code=422,
             )
 
-        forward_url = rule["forward_to"]
+        forward_url = self._build_forward_url(path)
         try:
+            forward_headers = self._get_forward_headers(request, client_ip)
             async with httpx.AsyncClient(timeout=30, verify=True) as client:
-                forward_headers = {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Forwarded-For": client_ip,
-                    "X-Forwarded-Proto": request.url.scheme,
-                    "User-Agent": request.headers.get("user-agent", "WebShield/1.0"),
-                }
-
                 resp = await client.post(
                     forward_url,
-                    data=sanitized_data,
+                    content=body,
                     headers=forward_headers,
                     follow_redirects=False,
                 )
@@ -108,14 +141,24 @@ class PostHandler:
                     path, forward_url, resp.status_code, client_ip,
                 )
 
+                excluded = {"transfer-encoding", "content-encoding", "connection"}
+                resp_headers = {
+                    k: v for k, v in resp.headers.items()
+                    if k.lower() not in excluded
+                }
+
+                return Response(
+                    content=resp.content,
+                    status_code=resp.status_code,
+                    headers=resp_headers,
+                )
+
         except httpx.TimeoutException:
             logger.error("Timeout forwarding POST to %s", forward_url)
             return Response(content="Gateway Timeout", status_code=504, media_type="text/plain")
         except Exception as exc:
             logger.error("Error forwarding POST to %s: %s", forward_url, exc)
             return Response(content="Bad Gateway", status_code=502, media_type="text/plain")
-
-        return self._success_response(rule)
 
     def _success_response(self, rule: dict) -> Response:
         redirect = rule.get("success_redirect")
@@ -126,6 +169,116 @@ class PostHandler:
             content=f"<html><body><p>{message}</p></body></html>",
             status_code=200,
         )
+
+    async def _learn_and_forward(self, request: Request, path: str, client_ip: str) -> Response:
+        """Capture an unmatched POST, auto-create a rule, and proxy to the original server."""
+        body = await request.body()
+        content_type = request.headers.get("content-type", "")
+        forward_url = self._build_forward_url(path)
+
+        field_names = []
+        already_known = any(p["path"] == path for p in self.learned_posts)
+
+        if not already_known:
+            try:
+                import json as _json
+                if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+                    form_data = await request.form()
+                    field_names = list(form_data.keys())
+                elif "application/json" in content_type:
+                    json_body = _json.loads(body)
+                    if isinstance(json_body, dict):
+                        field_names = list(json_body.keys())
+            except Exception:
+                pass
+
+            self.learned_posts.append({
+                "path": path,
+                "fields": field_names,
+                "client_ip": client_ip,
+            })
+            logger.info("Learn mode captured POST: %s (fields: %s, IP: %s)", path, field_names, client_ip)
+
+            try:
+                from database import async_session
+                from models.post_rule import PostRule, RuleField
+
+                db_forward_url = self.target_url + path
+                async with async_session() as db:
+                    rule = PostRule(
+                        site_id=self.site_id,
+                        name=f"Auto-learned: {path}",
+                        url_pattern=path,
+                        forward_to=db_forward_url,
+                        is_active=True,
+                        rate_limit_requests=10,
+                        rate_limit_window=60,
+                    )
+                    db.add(rule)
+                    await db.flush()
+
+                    for fname in field_names:
+                        db.add(RuleField(
+                            rule_id=rule.id,
+                            field_name=fname,
+                            field_type="text",
+                            required=False,
+                            max_length=5000,
+                        ))
+
+                    await db.commit()
+
+                self.rules.append({
+                    "url_pattern": path,
+                    "forward_to": db_forward_url,
+                    "is_active": True,
+                    "success_redirect": None,
+                    "success_message": None,
+                    "rate_limit_requests": 10,
+                    "rate_limit_window": 60,
+                    "honeypot_field": None,
+                    "enable_csrf": False,
+                    "fields": [
+                        {"field_name": f, "field_type": "text", "required": False, "max_length": 5000, "validation_regex": None}
+                        for f in field_names
+                    ],
+                })
+                logger.info("Auto-created POST rule for %s with %d fields", path, len(field_names))
+            except Exception as exc:
+                logger.error("Failed to auto-create rule for %s: %s", path, exc)
+
+        try:
+            forward_headers = self._get_forward_headers(request, client_ip)
+            async with httpx.AsyncClient(timeout=30, verify=True) as client:
+                resp = await client.post(
+                    forward_url,
+                    content=body,
+                    headers=forward_headers,
+                    follow_redirects=False,
+                )
+
+                logger.info(
+                    "Learn mode forwarded POST: %s -> %s (status: %d, IP: %s)",
+                    path, forward_url, resp.status_code, client_ip,
+                )
+
+                excluded_headers = {"transfer-encoding", "content-encoding", "connection"}
+                resp_headers = {
+                    k: v for k, v in resp.headers.items()
+                    if k.lower() not in excluded_headers
+                }
+
+                return Response(
+                    content=resp.content,
+                    status_code=resp.status_code,
+                    headers=resp_headers,
+                )
+        except httpx.TimeoutException:
+            logger.error("Timeout forwarding learned POST to %s", forward_url)
+            return Response(content="Gateway Timeout", status_code=504, media_type="text/plain")
+        except Exception as exc:
+            logger.error("Error forwarding learned POST to %s: %s", forward_url, exc)
+            return Response(content="Bad Gateway", status_code=502, media_type="text/plain")
 
     def _get_client_ip(self, request: Request) -> str:
         forwarded = request.headers.get("x-forwarded-for")

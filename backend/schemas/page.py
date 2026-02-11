@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class PageCreate(BaseModel):
     url: str
     site_id: str
+    spider: bool = False
 
 
 class PageResponse(BaseModel):

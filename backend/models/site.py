@@ -22,6 +22,9 @@ class Site(Base):
     auth_user: Mapped[str | None] = mapped_column(String(255), nullable=True)
     auth_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    internal_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    override_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     shield_active: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

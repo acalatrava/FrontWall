@@ -71,7 +71,7 @@
       </div>
     </div>
 
-    <div v-if="shieldStore.active" class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+    <div v-if="shieldStore.active" class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
       <h2 class="text-lg font-semibold text-white mb-4">Connection Info</h2>
       <div class="space-y-3 text-sm">
         <div class="flex items-center gap-3">
@@ -87,6 +87,52 @@
       </div>
     </div>
 
+    <div v-if="shieldStore.active" class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Learn Mode</h2>
+          <p class="text-sm text-gray-400 mt-1">
+            When enabled, unmatched POST requests are automatically captured and added as exception rules.
+          </p>
+        </div>
+        <label class="flex items-center cursor-pointer">
+          <div class="relative">
+            <input
+              type="checkbox"
+              :checked="shieldStore.learnMode"
+              @change="handleToggleLearn"
+              class="sr-only peer"
+            />
+            <div class="w-11 h-6 bg-gray-700 rounded-full peer-checked:bg-amber-500 transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+          </div>
+          <span class="ml-3 text-sm font-medium" :class="shieldStore.learnMode ? 'text-amber-400' : 'text-gray-400'">
+            {{ shieldStore.learnMode ? 'Active' : 'Off' }}
+          </span>
+        </label>
+      </div>
+
+      <div v-if="learnedPosts.length > 0">
+        <h3 class="text-sm font-medium text-gray-300 mb-2">Learned POST Rules ({{ learnedPosts.length }})</h3>
+        <div class="divide-y divide-gray-800 bg-gray-800/50 rounded-lg overflow-hidden">
+          <div v-for="(post, idx) in learnedPosts" :key="idx" class="px-4 py-3">
+            <div class="flex items-center justify-between">
+              <code class="text-sm text-amber-400">{{ post.path }}</code>
+              <span class="text-xs text-gray-500">{{ post.fields.length }} fields</span>
+            </div>
+            <div v-if="post.fields.length" class="mt-1 text-xs text-gray-500">
+              {{ post.fields.join(', ') }}
+            </div>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">These rules have been auto-created. Review them in the POST Rules section.</p>
+      </div>
+
+      <div v-else-if="shieldStore.learnMode" class="text-sm text-gray-500 bg-gray-800/50 rounded-lg p-4 text-center">
+        Waiting for POST requests... Submit a form on the deployed site to capture it.
+      </div>
+    </div>
+
     <div v-if="deployError" class="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl px-6 py-4 text-sm text-red-400">
       {{ deployError }}
     </div>
@@ -98,15 +144,30 @@ import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSitesStore } from '../stores/sites'
 import { useShieldStore } from '../stores/shield'
+import api from '../api'
 
 const sitesStore = useSitesStore()
 const shieldStore = useShieldStore()
 const { sites } = storeToRefs(sitesStore)
 const deployError = ref('')
+const learnedPosts = ref([])
+let learnPollTimer = null
 
-onMounted(() => {
+async function fetchLearnedPosts() {
+  if (!shieldStore.active) return
+  try {
+    const { data } = await api.get('/shield/learned-posts')
+    learnedPosts.value = data
+  } catch {}
+}
+
+onMounted(async () => {
   sitesStore.fetchSites()
-  shieldStore.fetchStatus()
+  await shieldStore.fetchStatus()
+  if (shieldStore.learnMode) {
+    fetchLearnedPosts()
+    startLearnPoll()
+  }
 })
 
 async function handleDeploy(siteId) {
@@ -121,8 +182,37 @@ async function handleDeploy(siteId) {
 async function handleUndeploy() {
   try {
     await shieldStore.undeploy()
+    stopLearnPoll()
+    learnedPosts.value = []
   } catch (e) {
     deployError.value = e.response?.data?.detail || 'Failed to undeploy shield'
+  }
+}
+
+async function handleToggleLearn() {
+  const newState = !shieldStore.learnMode
+  try {
+    await shieldStore.toggleLearnMode(newState)
+    if (newState) {
+      fetchLearnedPosts()
+      startLearnPoll()
+    } else {
+      stopLearnPoll()
+    }
+  } catch (e) {
+    deployError.value = e.response?.data?.detail || 'Failed to toggle learn mode'
+  }
+}
+
+function startLearnPoll() {
+  if (learnPollTimer) return
+  learnPollTimer = setInterval(fetchLearnedPosts, 3000)
+}
+
+function stopLearnPoll() {
+  if (learnPollTimer) {
+    clearInterval(learnPollTimer)
+    learnPollTimer = null
   }
 }
 </script>

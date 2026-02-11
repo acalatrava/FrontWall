@@ -68,6 +68,17 @@
             <label class="block text-sm font-medium text-gray-300 mb-1">URL</label>
             <input v-model="addUrl" required type="url" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://mysite.com/some-page" />
           </div>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <div class="relative">
+              <input type="checkbox" v-model="addSpider" class="sr-only peer" />
+              <div class="w-9 h-5 bg-gray-700 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+              <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+            </div>
+            <div>
+              <span class="text-sm font-medium text-gray-300">Enable Spider</span>
+              <p class="text-xs text-gray-500">Discover and crawl linked pages starting from this URL</p>
+            </div>
+          </label>
           <div v-if="addError" class="text-sm text-red-400">{{ addError }}</div>
           <div class="flex justify-end gap-3">
             <button type="button" @click="showAddModal = false" class="px-4 py-2 text-sm text-gray-400">Cancel</button>
@@ -93,6 +104,7 @@ const stats = ref(null)
 const search = ref('')
 const showAddModal = ref(false)
 const addUrl = ref('')
+const addSpider = ref(false)
 const addError = ref('')
 const adding = ref(false)
 
@@ -128,9 +140,10 @@ async function handleAdd() {
   addError.value = ''
   adding.value = true
   try {
-    await api.post('/pages/add', { url: addUrl.value, site_id: props.siteId })
+    await api.post('/pages/add', { url: addUrl.value, site_id: props.siteId, spider: addSpider.value })
     showAddModal.value = false
     addUrl.value = ''
+    addSpider.value = false
     await loadData()
   } catch (e) {
     addError.value = e.response?.data?.detail || 'Failed to add URL'

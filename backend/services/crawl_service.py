@@ -67,13 +67,17 @@ async def start_crawl(
         respect_robots=site.respect_robots_txt,
         auth=auth,
         progress_callback=progress_callback,
+        internal_url=site.internal_url,
+        override_host=site.override_host,
     )
     _active_crawlers[site_id] = engine
 
     async def _run_crawl():
+        final_status = "completed"
         try:
             await engine.run(job.id)
         except Exception as exc:
+            final_status = "failed"
             logger.error("Crawl failed for site %s: %s", site_id, exc)
             async with async_session() as session:
                 crawl_job = await session.get(CrawlJob, job.id)
@@ -83,6 +87,23 @@ async def start_crawl(
                     await session.commit()
         finally:
             _active_crawlers.pop(site_id, None)
+            if progress_callback:
+                try:
+                    done_data = {
+                        "site_id": site_id,
+                        "pages_found": engine.pages_found,
+                        "pages_crawled": engine.pages_crawled,
+                        "assets_downloaded": engine.assets_downloaded,
+                        "errors": engine.errors,
+                        "queue_size": 0,
+                        "finished": True,
+                        "status": final_status,
+                    }
+                    result = progress_callback(done_data)
+                    if asyncio.iscoroutine(result):
+                        await result
+                except Exception:
+                    pass
 
     asyncio.create_task(_run_crawl())
     return job
@@ -98,3 +119,17 @@ def stop_crawl(site_id: str) -> bool:
 
 def is_crawling(site_id: str) -> bool:
     return site_id in _active_crawlers
+
+
+def get_progress(site_id: str) -> dict | None:
+    engine = _active_crawlers.get(site_id)
+    if not engine:
+        return None
+    return {
+        "site_id": site_id,
+        "pages_found": engine.pages_found,
+        "pages_crawled": engine.pages_crawled,
+        "assets_downloaded": engine.assets_downloaded,
+        "errors": engine.errors,
+        "queue_size": len(engine.queue),
+    }

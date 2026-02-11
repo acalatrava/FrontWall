@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 import uvicorn
+from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,6 +13,7 @@ from database import async_session
 from models.site import Site
 from models.post_rule import PostRule, RuleField
 from shield.server import create_shield_app
+from shield.csp_builder import scan_cache_for_origins, build_csp
 from shield.waf import WAFMiddleware
 from shield.rate_limiter import RateLimiter
 from shield.post_handler import PostHandler
@@ -69,25 +71,43 @@ async def deploy_shield(site_id: str) -> bool:
     if not cache_dir.exists():
         raise FileNotFoundError(f"Cache directory not found for site {site_id}. Run a crawl first.")
 
-    shield_app = create_shield_app(site_id)
+    async with async_session() as db:
+        site = await db.get(Site, site_id)
+        target_url = site.target_url if site else None
+
+    scan_result = scan_cache_for_origins(cache_dir, target_url=target_url)
+    csp = build_csp(scan_result)
+    logger.info("Built dynamic CSP with %d external origins", len(scan_result["origins"]))
+
+    shield_app = create_shield_app(site_id, csp=csp)
 
     rate_limiter = RateLimiter(
         global_requests=settings.rate_limit_requests,
         global_window=settings.rate_limit_window_seconds,
     )
 
+    internal_url = site.internal_url if site else None
+    override_host = site.override_host if site else None
+
     post_rules = await _load_post_rules(site_id)
-    _post_handler = PostHandler(rate_limiter)
+    _post_handler = PostHandler(
+        rate_limiter,
+        site_id=site_id,
+        target_url=target_url or "",
+        internal_url=internal_url,
+        override_host=override_host,
+    )
     _post_handler.load_rules(post_rules)
 
     @shield_app.api_route("/{path:path}", methods=["POST"])
-    async def handle_post(request, path: str = ""):
+    async def handle_post(request: Request, path: str = ""):
         return await _post_handler.handle_post(request)
 
     shield_app.add_middleware(
         WAFMiddleware,
         rate_limiter=rate_limiter,
         max_body_size=settings.max_request_size_bytes,
+        post_handler=_post_handler,
     )
 
     config = uvicorn.Config(
@@ -143,3 +163,45 @@ async def undeploy_shield() -> bool:
 
 def is_shield_active() -> bool:
     return _shield_server is not None and not _shield_server.should_exit
+
+
+def set_learn_mode(enabled: bool) -> bool:
+    if _post_handler is None:
+        return False
+    _post_handler.learn_mode = enabled
+    logger.info("Learn mode %s", "enabled" if enabled else "disabled")
+    return True
+
+
+def is_learn_mode() -> bool:
+    if _post_handler is None:
+        return False
+    return _post_handler.learn_mode
+
+
+def get_learned_posts() -> list[dict]:
+    if _post_handler is None:
+        return []
+    return list(_post_handler.learned_posts)
+
+
+async def auto_deploy_if_needed() -> None:
+    """Check if any site had shield_active=True and re-deploy it on startup."""
+    async with async_session() as db:
+        result = await db.execute(select(Site).where(Site.shield_active == True))
+        site = result.scalar_one_or_none()
+        if not site:
+            return
+
+        cache_dir = Path(settings.cache_dir) / site.id
+        if not cache_dir.exists():
+            logger.warning("Site %s was marked as shielded but has no cache. Skipping auto-deploy.", site.id)
+            site.shield_active = False
+            await db.commit()
+            return
+
+    try:
+        await deploy_shield(site.id)
+        logger.info("Auto-deployed shield for site %s on startup", site.id)
+    except Exception as exc:
+        logger.error("Failed to auto-deploy shield for site %s: %s", site.id, exc)

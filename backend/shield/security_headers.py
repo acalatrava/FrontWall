@@ -8,21 +8,8 @@ DEFAULT_HEADERS = {
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
-    "Content-Security-Policy": (
-        "default-src 'self'; "
-        "script-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; "
-        "font-src 'self'; "
-        "connect-src 'self'; "
-        "frame-ancestors 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'"
-    ),
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
     "Cross-Origin-Opener-Policy": "same-origin",
-    "Cross-Origin-Embedder-Policy": "require-corp",
-    "Cross-Origin-Resource-Policy": "same-origin",
 }
 
 STATIC_CACHE_HEADERS = {
@@ -42,9 +29,11 @@ IMMUTABLE_EXTENSIONS = {
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Injects hardened security headers into every response."""
 
-    def __init__(self, app, custom_headers: dict[str, str] | None = None):
+    def __init__(self, app, csp: str | None = None, custom_headers: dict[str, str] | None = None):
         super().__init__(app)
         self.headers = {**DEFAULT_HEADERS}
+        if csp:
+            self.headers["Content-Security-Policy"] = csp
         if custom_headers:
             self.headers.update(custom_headers)
 

@@ -35,13 +35,17 @@ SUSPICIOUS_PATH_PATTERNS = [
     re.compile(r"\.git/", re.IGNORECASE),
     re.compile(r"\.env", re.IGNORECASE),
     re.compile(r"phpmyadmin", re.IGNORECASE),
-    re.compile(r"wp-includes/", re.IGNORECASE),
-    re.compile(r"wp-content/plugins/", re.IGNORECASE),
 ]
 
 BLOCKED_RESPONSE = Response(content="Forbidden", status_code=403, media_type="text/plain")
 RATE_LIMITED_RESPONSE = Response(content="Too Many Requests", status_code=429, media_type="text/plain")
 PAYLOAD_TOO_LARGE = Response(content="Payload Too Large", status_code=413, media_type="text/plain")
+
+STATIC_ASSET_EXTENSIONS = {
+    ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif",
+    ".ico", ".woff", ".woff2", ".ttf", ".eot", ".otf", ".map",
+    ".pdf", ".mp4", ".webm", ".mp3", ".ogg",
+}
 
 
 class WAFMiddleware(BaseHTTPMiddleware):
@@ -54,12 +58,14 @@ class WAFMiddleware(BaseHTTPMiddleware):
         max_body_size: int = 1_048_576,
         ip_whitelist: set[str] | None = None,
         ip_blacklist: set[str] | None = None,
+        post_handler=None,
     ):
         super().__init__(app)
         self.rate_limiter = rate_limiter or RateLimiter()
         self.max_body_size = max_body_size
         self.ip_whitelist = ip_whitelist or set()
         self.ip_blacklist = ip_blacklist or set()
+        self.post_handler = post_handler
 
     async def dispatch(self, request: Request, call_next):
         client_ip = self._get_client_ip(request)
@@ -71,19 +77,30 @@ class WAFMiddleware(BaseHTTPMiddleware):
         if self.ip_whitelist and client_ip not in self.ip_whitelist:
             pass
 
-        if not await self.rate_limiter.check_global(client_ip):
-            logger.warning("Rate limit exceeded for IP: %s", client_ip)
-            return RATE_LIMITED_RESPONSE
-
         user_agent = request.headers.get("user-agent", "")
         if self._is_malicious_bot(user_agent):
             logger.warning("Blocked malicious bot: %s (IP: %s)", user_agent, client_ip)
             return BLOCKED_RESPONSE
 
         path = request.url.path
+
+        is_static = any(path.lower().endswith(ext) for ext in STATIC_ASSET_EXTENSIONS)
+        if not is_static:
+            if not await self.rate_limiter.check_global(client_ip):
+                logger.warning("Rate limit exceeded for IP: %s", client_ip)
+                return RATE_LIMITED_RESPONSE
         if self._is_suspicious_path(path):
-            logger.warning("Blocked suspicious path: %s (IP: %s)", path, client_ip)
-            return BLOCKED_RESPONSE
+            post_allowed = (
+                request.method == "POST"
+                and self.post_handler
+                and (
+                    self.post_handler.find_matching_rule(path)
+                    or self.post_handler.learn_mode
+                )
+            )
+            if not post_allowed:
+                logger.warning("Blocked suspicious path: %s (IP: %s)", path, client_ip)
+                return BLOCKED_RESPONSE
 
         query = str(request.url.query)
         if query and self._is_suspicious_path(query):
