@@ -1,14 +1,24 @@
 <template>
   <div>
-    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">Security Settings</h1>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <h1 class="text-xl sm:text-2xl font-bold text-white">{{ t('security.title') }}</h1>
+      <div v-if="saving" class="flex items-center gap-2 text-xs text-blue-400">
+        <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        {{ t('security.saving') }}
+      </div>
+      <div v-else-if="saved" class="flex items-center gap-1.5 text-xs text-emerald-400">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        {{ t('security.saved') }}
+      </div>
+    </div>
 
     <div v-if="sites.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
-      <p class="text-gray-400">No sites configured. <router-link to="/sites" class="text-blue-400 hover:underline">Add a site first.</router-link></p>
+      <p class="text-gray-400">{{ t('common.noSites') }} <router-link to="/sites" class="text-blue-400 hover:underline">{{ t('common.addSiteFirst') }}</router-link></p>
     </div>
 
     <template v-else>
       <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-300 mb-2">Select Site</label>
+        <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('common.selectSite') }}</label>
         <select
           v-model="selectedSiteId"
           class="w-full max-w-md px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -18,72 +28,92 @@
       </div>
 
       <div v-if="selectedSite" class="space-y-6">
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">Shield Configuration</h2>
+
+        <!-- Shield Configuration (read-only) -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.shield.title') }}</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
-              <span class="text-gray-300">Shield Port</span>
+              <span class="text-gray-300">{{ t('security.shield.port') }}</span>
               <span class="font-mono" :class="selectedSite.shield_port ? 'text-blue-400' : 'text-gray-500'">
-                {{ selectedSite.shield_port || 'Not set' }}
+                {{ selectedSite.shield_port || t('security.shield.notSet') }}
               </span>
             </div>
             <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
-              <span class="text-gray-300">Status</span>
+              <span class="text-gray-300">{{ t('security.shield.status') }}</span>
               <span :class="selectedSite.shield_active ? 'text-green-400' : 'text-gray-500'">
-                {{ selectedSite.shield_active ? 'Deployed' : 'Inactive' }}
+                {{ selectedSite.shield_active ? t('security.shield.deployed') : t('security.shield.inactive') }}
               </span>
             </div>
           </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">WAF (Web Application Firewall)</h2>
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-xs font-medium" :class="selectedSite.waf_enabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
-              {{ selectedSite.waf_enabled ? 'Enabled' : 'Disabled' }}
-            </span>
+        <!-- WAF -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold text-white">{{ t('security.waf.title') }}</h2>
+            <ToggleSwitch :checked="selectedSite.waf_enabled" @update="v => saveSetting('waf_enabled', v)" color="green" />
           </div>
-          <div v-if="selectedSite.waf_enabled" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div v-for="feature in wafFeatures" :key="feature.name" class="flex items-start gap-3 bg-gray-800/50 rounded-lg p-4">
-              <span
-                class="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs"
-                :class="feature.enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-500'"
-              >
-                {{ feature.enabled ? '&#10003;' : '&#10005;' }}
-              </span>
-              <div>
-                <div class="text-sm font-medium text-white">{{ feature.name }}</div>
-                <div class="text-xs text-gray-400 mt-0.5">{{ feature.description }}</div>
+          <div v-if="selectedSite.waf_enabled" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
+                <div>
+                  <div class="text-sm font-medium text-white">{{ t('security.waf.botDetection') }}</div>
+                  <div class="text-xs text-gray-400 mt-0.5">{{ t('security.waf.botDetectionDesc') }}</div>
+                </div>
+                <ToggleSwitch :checked="selectedSite.block_bots" @update="v => saveSetting('block_bots', v)" />
+              </div>
+              <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
+                <div>
+                  <div class="text-sm font-medium text-white">{{ t('security.waf.suspiciousPath') }}</div>
+                  <div class="text-xs text-gray-400 mt-0.5">{{ t('security.waf.suspiciousPathDesc') }}</div>
+                </div>
+                <ToggleSwitch :checked="selectedSite.block_suspicious_paths" @update="v => saveSetting('block_suspicious_paths', v)" />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-for="feature in readOnlyWafFeatures" :key="feature.name" class="flex items-start gap-3 bg-gray-800/50 rounded-lg p-4">
+                <span class="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs bg-green-500/20 text-green-400">&#10003;</span>
+                <div>
+                  <div class="text-sm font-medium text-white">{{ feature.name }}</div>
+                  <div class="text-xs text-gray-400 mt-0.5">{{ feature.description }}</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">Rate Limiting</h2>
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-xs font-medium" :class="selectedSite.rate_limit_enabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
-              {{ selectedSite.rate_limit_enabled ? 'Enabled' : 'Disabled' }}
-            </span>
+        <!-- Rate Limiting -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold text-white">{{ t('security.rateLimit.title') }}</h2>
+            <ToggleSwitch :checked="selectedSite.rate_limit_enabled" @update="v => saveSetting('rate_limit_enabled', v)" color="green" />
           </div>
           <div v-if="selectedSite.rate_limit_enabled" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div class="bg-gray-800/50 rounded-lg p-4">
-              <div class="text-gray-400">Requests per window</div>
-              <div class="text-white font-mono text-lg mt-1">{{ selectedSite.rate_limit_requests }}</div>
+              <label class="text-gray-400 text-xs block mb-2">{{ t('security.rateLimit.requestsPerWindow') }}</label>
+              <input
+                type="number" min="1" :value="selectedSite.rate_limit_requests"
+                @change="e => saveSetting('rate_limit_requests', parseInt(e.target.value))"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
             <div class="bg-gray-800/50 rounded-lg p-4">
-              <div class="text-gray-400">Window duration</div>
-              <div class="text-white font-mono text-lg mt-1">{{ selectedSite.rate_limit_window }}s</div>
+              <label class="text-gray-400 text-xs block mb-2">{{ t('security.rateLimit.windowDuration') }}</label>
+              <input
+                type="number" min="1" :value="selectedSite.rate_limit_window"
+                @change="e => saveSetting('rate_limit_window', parseInt(e.target.value))"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
           </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">Security Headers</h2>
-          <div class="flex items-center gap-3 mb-4">
-            <span class="px-3 py-1 rounded-full text-xs font-medium" :class="selectedSite.security_headers_enabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
-              {{ selectedSite.security_headers_enabled ? 'Enabled' : 'Disabled' }}
-            </span>
+        <!-- Security Headers -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold text-white">{{ t('security.secHeaders.title') }}</h2>
+            <ToggleSwitch :checked="selectedSite.security_headers_enabled" @update="v => saveSetting('security_headers_enabled', v)" color="green" />
           </div>
           <div v-if="selectedSite.security_headers_enabled" class="space-y-2">
             <div v-for="header in securityHeaders" :key="header.name" class="bg-gray-800/50 rounded-lg px-4 py-3">
@@ -93,50 +123,96 @@
           </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">IP Access Control</h2>
+        <!-- IP Access Control -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.ipAccess.title') }}</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="bg-gray-800/50 rounded-lg p-4">
-              <h3 class="text-sm font-medium text-gray-300 mb-2">Whitelist</h3>
-              <p v-if="!selectedSite.ip_whitelist" class="text-xs text-gray-500">Not configured (all IPs allowed)</p>
-              <div v-else class="flex flex-wrap gap-1">
-                <span v-for="ip in selectedSite.ip_whitelist.split(',').filter(Boolean)" :key="ip" class="px-2 py-0.5 bg-green-500/10 text-green-400 rounded text-xs font-mono">{{ ip.trim() }}</span>
+              <h3 class="text-sm font-medium text-gray-300 mb-2">{{ t('security.ipAccess.whitelist') }}</h3>
+              <div class="flex gap-2">
+                <input
+                  v-model="ipWhitelistInput"
+                  :placeholder="t('security.ipAccess.whitelistPlaceholder')"
+                  class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button @click="saveSetting('ip_whitelist', ipWhitelistInput)" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">Save</button>
               </div>
+              <p class="text-xs text-gray-500 mt-1.5">{{ t('security.ipAccess.whitelistHint') }}</p>
             </div>
             <div class="bg-gray-800/50 rounded-lg p-4">
-              <h3 class="text-sm font-medium text-gray-300 mb-2">Blacklist</h3>
-              <p v-if="!selectedSite.ip_blacklist" class="text-xs text-gray-500">Not configured</p>
-              <div v-else class="flex flex-wrap gap-1">
-                <span v-for="ip in selectedSite.ip_blacklist.split(',').filter(Boolean)" :key="ip" class="px-2 py-0.5 bg-red-500/10 text-red-400 rounded text-xs font-mono">{{ ip.trim() }}</span>
+              <h3 class="text-sm font-medium text-gray-300 mb-2">{{ t('security.ipAccess.blacklist') }}</h3>
+              <div class="flex gap-2">
+                <input
+                  v-model="ipBlacklistInput"
+                  :placeholder="t('security.ipAccess.blacklistPlaceholder')"
+                  class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button @click="saveSetting('ip_blacklist', ipBlacklistInput)" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">Save</button>
               </div>
+              <p class="text-xs text-gray-500 mt-1.5">{{ t('security.ipAccess.blacklistHint') }}</p>
             </div>
           </div>
         </div>
 
-        <div v-if="selectedSite.blocked_countries" class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <!-- Country Blocking -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
           <h2 class="text-lg font-semibold text-white mb-4">Country Blocking</h2>
-          <p class="text-xs text-gray-500 mb-3">Traffic from these countries is blocked at the WAF level.</p>
-          <div class="flex flex-wrap gap-1.5">
+          <p class="text-xs text-gray-500 mb-3">Traffic from selected countries is blocked at the WAF level.</p>
+
+          <div class="flex flex-wrap gap-1.5 mb-4" v-if="selectedCountries.length">
             <span
-              v-for="code in selectedSite.blocked_countries.split(',').filter(Boolean)"
+              v-for="code in selectedCountries"
               :key="code"
-              class="px-2.5 py-1 bg-red-900/40 border border-red-700/40 text-red-300 rounded-full text-xs font-medium"
-            >{{ code.trim() }}</span>
+              class="inline-flex items-center gap-1 px-2.5 py-1 bg-red-900/40 border border-red-700/40 text-red-300 rounded-full text-xs font-medium cursor-pointer hover:bg-red-800/40 transition-colors"
+              @click="removeCountry(code)"
+            >
+              {{ countryLabel(code) }}
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </span>
+          </div>
+          <p v-else class="text-sm text-gray-500 mb-4">No countries blocked.</p>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <div class="relative flex-1 sm:max-w-sm">
+              <input
+                v-model="countrySearch"
+                placeholder="Search country..."
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div v-if="countrySearch && filteredCountries.length" class="absolute top-full left-0 right-0 z-20 mt-1 bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto shadow-xl">
+                <button
+                  v-for="c in filteredCountries.slice(0, 20)"
+                  :key="c.code"
+                  @click="addCountry(c.code)"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+                >{{ c.code }} — {{ c.name }}</button>
+              </div>
+            </div>
+            <button @click="loadHighRisk" class="px-3 py-2 bg-red-600/20 border border-red-700/40 text-red-400 text-xs font-medium rounded-lg hover:bg-red-600/30 transition-colors whitespace-nowrap">{{ t('security.country.highRisk') }}</button>
           </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">Request Size Limit</h2>
-          <div class="bg-gray-800/50 rounded-lg p-4 text-sm">
-            <span class="text-gray-400">Maximum body size:</span>
-            <span class="ml-2 text-white font-mono">{{ formatSize(selectedSite.max_body_size) }}</span>
+        <!-- Max Body Size -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.bodySize.title') }}</h2>
+          <div class="bg-gray-800/50 rounded-lg p-4">
+            <label class="text-gray-400 text-xs block mb-2">{{ t('security.bodySize.label') }}</label>
+            <div class="flex gap-2 items-center">
+              <input
+                type="number" min="1024" :value="selectedSite.max_body_size"
+                @change="e => saveSetting('max_body_size', parseInt(e.target.value))"
+                class="w-48 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-400">{{ formatSize(selectedSite.max_body_size) }}</span>
+            </div>
           </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">Blocked Patterns</h2>
+        <!-- Blocked Patterns (read-only) -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.blockedPatterns.title') }}</h2>
           <p class="text-sm text-gray-400 mb-4">
-            Requests matching these patterns in the path or query string are automatically blocked.
+            {{ t('security.blockedPatterns.description') }}
           </p>
           <div class="flex flex-wrap gap-2">
             <span v-for="pattern in blockedPatterns" :key="pattern" class="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-mono">
@@ -145,13 +221,14 @@
           </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">Input Sanitization</h2>
+        <!-- Input Sanitization (read-only) -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.sanitization.title') }}</h2>
           <p class="text-sm text-gray-400 mb-4">
-            All POST form data is processed through multiple sanitization layers before forwarding.
+            {{ t('security.sanitization.description') }}
           </p>
           <div class="space-y-3">
-            <div v-for="step in sanitizationSteps" :key="step.name" class="flex items-start gap-3">
+            <div v-for="step in sanitizationSteps" :key="step.order" class="flex items-start gap-3">
               <span class="mt-1 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold">{{ step.order }}</span>
               <div>
                 <div class="text-sm font-medium text-white">{{ step.name }}</div>
@@ -160,21 +237,90 @@
             </div>
           </div>
         </div>
+
       </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, h } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useSitesStore } from '../stores/sites'
+import api from '../api'
 
+const { t } = useI18n()
 const store = useSitesStore()
 const { sites } = storeToRefs(store)
 const selectedSiteId = ref(null)
+const saving = ref(false)
+const saved = ref(false)
+let savedTimer = null
 
 const selectedSite = computed(() => sites.value.find(s => s.id === selectedSiteId.value) || null)
+
+const ipWhitelistInput = ref('')
+const ipBlacklistInput = ref('')
+const countrySearch = ref('')
+const countries = ref([])
+const highRiskCountries = ref([])
+
+const ToggleSwitch = {
+  props: { checked: Boolean, color: { type: String, default: 'blue' } },
+  emits: ['update'],
+  setup(props, { emit }) {
+    const colors = { green: 'peer-checked:bg-green-500', blue: 'peer-checked:bg-blue-500' }
+    return () =>
+      h('label', { class: 'flex items-center cursor-pointer flex-shrink-0' }, [
+        h('div', { class: 'relative' }, [
+          h('input', {
+            type: 'checkbox',
+            checked: props.checked,
+            onChange: () => emit('update', !props.checked),
+            class: 'sr-only peer',
+          }),
+          h('div', { class: `w-11 h-6 bg-gray-700 rounded-full ${colors[props.color] || colors.blue} transition-colors` }),
+          h('div', { class: 'absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5' }),
+        ]),
+      ])
+  },
+}
+
+const selectedCountries = computed(() => {
+  const s = selectedSite.value
+  if (!s || !s.blocked_countries) return []
+  return s.blocked_countries.split(',').map(c => c.trim()).filter(Boolean)
+})
+
+const filteredCountries = computed(() => {
+  const q = countrySearch.value.toLowerCase()
+  return countries.value.filter(c =>
+    !selectedCountries.value.includes(c.code) &&
+    (c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+  )
+})
+
+function countryLabel(code) {
+  const found = countries.value.find(c => c.code === code)
+  return found ? `${code} — ${found.name}` : code
+}
+
+function addCountry(code) {
+  const updated = [...selectedCountries.value, code]
+  countrySearch.value = ''
+  saveSetting('blocked_countries', updated.join(','))
+}
+
+function removeCountry(code) {
+  const updated = selectedCountries.value.filter(c => c !== code)
+  saveSetting('blocked_countries', updated.join(','))
+}
+
+function loadHighRisk() {
+  const merged = new Set([...selectedCountries.value, ...highRiskCountries.value])
+  saveSetting('blocked_countries', [...merged].join(','))
+}
 
 watch(sites, (val) => {
   if (val.length && !selectedSiteId.value) {
@@ -182,11 +328,38 @@ watch(sites, (val) => {
   }
 })
 
+watch(selectedSite, (s) => {
+  if (s) {
+    ipWhitelistInput.value = s.ip_whitelist || ''
+    ipBlacklistInput.value = s.ip_blacklist || ''
+  }
+})
+
+async function saveSetting(field, value) {
+  if (!selectedSiteId.value) return
+  saving.value = true
+  saved.value = false
+  clearTimeout(savedTimer)
+  try {
+    await store.updateSite(selectedSiteId.value, { [field]: value })
+    saving.value = false
+    saved.value = true
+    savedTimer = setTimeout(() => { saved.value = false }, 2000)
+  } catch {
+    saving.value = false
+  }
+}
+
 onMounted(async () => {
   await store.fetchSites()
   if (sites.value.length) {
     selectedSiteId.value = sites.value[0].id
   }
+  try {
+    const { data } = await api.get('/shield/countries')
+    countries.value = data.countries || []
+    highRiskCountries.value = data.high_risk || []
+  } catch {}
 })
 
 function formatSize(bytes) {
@@ -196,17 +369,12 @@ function formatSize(bytes) {
   return (bytes / 1048576).toFixed(1) + ' MB'
 }
 
-const wafFeatures = computed(() => {
+const readOnlyWafFeatures = computed(() => {
   const s = selectedSite.value
   if (!s) return []
   return [
-    { name: 'Rate Limiting', description: 'Token bucket per-IP rate limiting', enabled: s.rate_limit_enabled },
-    { name: 'Bot Detection', description: 'Blocks known malicious scanners (SQLMap, Nikto, etc.)', enabled: s.block_bots },
-    { name: 'Suspicious Path Blocking', description: 'Blocks wp-admin, path traversal, .env, .git, etc.', enabled: s.block_suspicious_paths },
-    { name: 'Request Size Limits', description: `Max body: ${formatSize(s.max_body_size)}`, enabled: true },
-    { name: 'IP Access Control', description: 'Whitelist / blacklist specific IPs', enabled: !!(s.ip_whitelist || s.ip_blacklist) },
-    { name: 'Country Blocking', description: 'Block traffic from specific countries via GeoIP', enabled: !!s.blocked_countries },
-    { name: 'POST Sanitization', description: 'Multi-layer input validation for form submissions', enabled: true },
+    { name: t('security.waf.requestSizeLimits'), description: t('security.waf.requestSizeLimitsDesc', { size: formatSize(s.max_body_size) }) },
+    { name: t('security.waf.postSanitization'), description: t('security.waf.postSanitizationDesc') },
   ]
 })
 

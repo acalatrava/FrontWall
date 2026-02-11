@@ -6,8 +6,8 @@
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           <path d="m9 12 2 2 4-4" stroke="#22c55e"/>
         </svg>
-        <h1 class="mt-4 text-2xl font-bold text-white">FrontWall</h1>
-        <p class="mt-1 text-gray-400">Sign in to your admin panel</p>
+        <h1 class="mt-4 text-2xl font-bold text-white">{{ t('auth.signInTitle') }}</h1>
+        <p class="mt-1 text-gray-400">{{ t('auth.signInSubtitle') }}</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="bg-gray-900 rounded-xl border border-gray-800 p-5 sm:p-8 space-y-5">
@@ -19,7 +19,7 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">Username</label>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.username') }}</label>
           <input
             v-model="username"
             type="text"
@@ -31,7 +31,7 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.password') }}</label>
           <input
             v-model="password"
             type="password"
@@ -46,12 +46,12 @@
           :disabled="loading"
           class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
         >
-          {{ loading ? 'Signing in...' : 'Sign In' }}
+          {{ loading ? t('auth.signingIn') : t('auth.signIn') }}
         </button>
 
         <div v-if="passkeyAvailable" class="relative">
           <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-800"></div></div>
-          <div class="relative flex justify-center text-xs"><span class="bg-gray-900 px-3 text-gray-500">or</span></div>
+          <div class="relative flex justify-center text-xs"><span class="bg-gray-900 px-3 text-gray-500">{{ t('auth.orDivider') }}</span></div>
         </div>
 
         <button
@@ -62,11 +62,11 @@
           class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          {{ passkeyLoading ? 'Verifying...' : 'Sign in with Passkey' }}
+          {{ passkeyLoading ? t('auth.passkeyVerifying') : t('auth.passkeySignIn') }}
         </button>
 
         <div class="text-center pt-1">
-          <router-link to="/forgot-password" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Forgot password?</router-link>
+          <router-link to="/forgot-password" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">{{ t('auth.forgotPassword') }}</router-link>
         </div>
       </form>
     </div>
@@ -76,8 +76,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()

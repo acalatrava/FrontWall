@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-xl sm:text-2xl font-bold text-white">Users</h1>
-      <button @click="showInvite = true" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">+ Invite User</button>
+      <h1 class="text-xl sm:text-2xl font-bold text-white">{{ t('users.title') }}</h1>
+      <button @click="showInvite = true" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">{{ t('users.inviteUser') }}</button>
     </div>
 
     <div v-if="loading" class="text-center text-gray-400 py-12">Loading...</div>
@@ -13,19 +13,19 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-gray-800 text-xs text-gray-500 uppercase">
-              <th class="text-left py-3 px-5">User</th>
-              <th class="text-left py-3 px-5">Role</th>
-              <th class="text-left py-3 px-5">Status</th>
-              <th class="text-left py-3 px-5">Last Login</th>
-              <th class="text-left py-3 px-5">Security</th>
-              <th class="text-right py-3 px-5">Actions</th>
+              <th class="text-left py-3 px-5">{{ t('users.user') }}</th>
+              <th class="text-left py-3 px-5">{{ t('users.role') }}</th>
+              <th class="text-left py-3 px-5">{{ t('users.status') }}</th>
+              <th class="text-left py-3 px-5">{{ t('users.lastLogin') }}</th>
+              <th class="text-left py-3 px-5">{{ t('users.securityCol') }}</th>
+              <th class="text-right py-3 px-5">{{ t('users.actions') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="u in users" :key="u.id" class="border-b border-gray-800/50 last:border-0 hover:bg-gray-800/30 transition-colors">
               <td class="py-3 px-5">
                 <div class="text-sm font-medium text-white">{{ u.username }}</div>
-                <div class="text-xs text-gray-500">{{ u.email || 'No email' }}</div>
+                <div class="text-xs text-gray-500">{{ u.email || t('users.noEmail') }}</div>
               </td>
               <td class="py-3 px-5">
                 <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -41,25 +41,25 @@
                   <span class="w-1.5 h-1.5 bg-red-400 rounded-full"></span> Inactive
                 </span>
               </td>
-              <td class="py-3 px-5 text-xs text-gray-400">{{ u.last_login ? formatDate(u.last_login) : 'Never' }}</td>
+              <td class="py-3 px-5 text-xs text-gray-400">{{ u.last_login ? formatDate(u.last_login) : t('users.never') }}</td>
               <td class="py-3 px-5">
                 <div class="flex items-center gap-2">
-                  <span v-if="u.email_verified" class="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px]">Email verified</span>
-                  <span v-if="u.has_passkey" class="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px]">Passkey</span>
+                  <span v-if="u.email_verified" class="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px]">{{ t('users.emailVerified') }}</span>
+                  <span v-if="u.has_passkey" class="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px]">{{ t('users.passkey') }}</span>
                 </div>
               </td>
               <td class="py-3 px-5 text-right">
                 <div v-if="u.id !== currentUserId" class="flex items-center justify-end gap-1">
                   <button @click="toggleRole(u)" class="px-2 py-1 text-xs text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                    {{ u.role === 'admin' ? 'Demote' : 'Promote' }}
+                    {{ u.role === 'admin' ? t('users.demote') : t('users.promote') }}
                   </button>
                   <button @click="toggleActive(u)" class="px-2 py-1 text-xs rounded transition-colors"
                           :class="u.is_active ? 'text-amber-400 hover:bg-amber-500/10' : 'text-emerald-400 hover:bg-emerald-500/10'">
-                    {{ u.is_active ? 'Deactivate' : 'Activate' }}
+                    {{ u.is_active ? t('users.deactivate') : t('users.activate') }}
                   </button>
-                  <button @click="handleDelete(u)" class="px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-colors">Delete</button>
+                  <button @click="handleDelete(u)" class="px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-colors">{{ t('common.delete') }}</button>
                 </div>
-                <span v-else class="text-xs text-gray-600">You</span>
+                <span v-else class="text-xs text-gray-600">{{ t('users.you') }}</span>
               </td>
             </tr>
           </tbody>
@@ -72,7 +72,7 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-white">{{ u.username }}</div>
-              <div class="text-xs text-gray-500">{{ u.email || 'No email' }}</div>
+              <div class="text-xs text-gray-500">{{ u.email || t('users.noEmail') }}</div>
             </div>
             <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
                   :class="u.role === 'admin' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'">
@@ -86,19 +86,19 @@
             <span v-else class="text-red-400 flex items-center gap-1">
               <span class="w-1.5 h-1.5 bg-red-400 rounded-full"></span> Inactive
             </span>
-            <span v-if="u.email_verified" class="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px]">Email verified</span>
-            <span v-if="u.has_passkey" class="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px]">Passkey</span>
-            <span class="text-gray-500">{{ u.last_login ? formatDate(u.last_login) : 'Never logged in' }}</span>
+            <span v-if="u.email_verified" class="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px]">{{ t('users.emailVerified') }}</span>
+            <span v-if="u.has_passkey" class="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px]">{{ t('users.passkey') }}</span>
+            <span class="text-gray-500">{{ u.last_login ? formatDate(u.last_login) : t('users.neverLoggedIn') }}</span>
           </div>
           <div v-if="u.id !== currentUserId" class="flex flex-wrap gap-2 pt-1">
             <button @click="toggleRole(u)" class="px-2.5 py-1 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded transition-colors">
-              {{ u.role === 'admin' ? 'Demote' : 'Promote' }}
+              {{ u.role === 'admin' ? t('users.demote') : t('users.promote') }}
             </button>
             <button @click="toggleActive(u)" class="px-2.5 py-1 text-xs rounded transition-colors"
                     :class="u.is_active ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'">
-              {{ u.is_active ? 'Deactivate' : 'Activate' }}
+              {{ u.is_active ? t('users.deactivate') : t('users.activate') }}
             </button>
-            <button @click="handleDelete(u)" class="px-2.5 py-1 text-xs text-red-400 bg-red-500/10 rounded transition-colors">Delete</button>
+            <button @click="handleDelete(u)" class="px-2.5 py-1 text-xs text-red-400 bg-red-500/10 rounded transition-colors">{{ t('common.delete') }}</button>
           </div>
         </div>
       </div>
@@ -107,24 +107,24 @@
     <!-- Passkey management for current user -->
     <div class="mt-8">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-base sm:text-lg font-bold text-white">Your Passkeys</h2>
+        <h2 class="text-base sm:text-lg font-bold text-white">{{ t('users.yourPasskeys') }}</h2>
         <button @click="registerPasskey" :disabled="passkeyRegistering" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium rounded-lg border border-gray-700 transition-colors flex items-center gap-1.5">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          {{ passkeyRegistering ? 'Registering...' : '+ Add Passkey' }}
+          {{ passkeyRegistering ? t('users.registering') : t('users.addPasskey') }}
         </button>
       </div>
       <div v-if="passkeys.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
-        <p class="text-sm text-gray-500">No passkeys registered. Add a passkey for passwordless sign-in.</p>
+        <p class="text-sm text-gray-500">{{ t('users.noPasskeys') }}</p>
       </div>
       <div v-else class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800/50">
         <div v-for="pk in passkeys" :key="pk.id" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 sm:px-5 py-3">
           <div class="min-w-0">
             <div class="text-sm text-white font-medium truncate">{{ pk.name }}</div>
-            <div class="text-xs text-gray-500 truncate">Registered {{ formatDate(pk.created_at) }} &middot; ID: {{ pk.credential_id_preview }}</div>
+            <div class="text-xs text-gray-500 truncate">{{ t('users.registered') }} {{ formatDate(pk.created_at) }} &middot; ID: {{ pk.credential_id_preview }}</div>
           </div>
           <div class="flex items-center gap-3 flex-shrink-0">
-            <span v-if="pk.last_used" class="text-xs text-gray-500 hidden sm:inline">Last used {{ formatDate(pk.last_used) }}</span>
-            <button @click="deletePasskey(pk)" class="text-xs text-red-400 hover:text-red-300">Remove</button>
+            <span v-if="pk.last_used" class="text-xs text-gray-500 hidden sm:inline">{{ t('users.lastUsed') }} {{ formatDate(pk.last_used) }}</span>
+            <button @click="deletePasskey(pk)" class="text-xs text-red-400 hover:text-red-300">{{ t('common.remove') }}</button>
           </div>
         </div>
       </div>
@@ -133,27 +133,27 @@
     <!-- Invite modal -->
     <div v-if="showInvite" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @mousedown.self="showInvite = false">
       <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md p-4 sm:p-6 mx-4 shadow-2xl">
-        <h3 class="text-lg font-bold text-white mb-4">Invite User</h3>
+        <h3 class="text-lg font-bold text-white mb-4">{{ t('users.inviteModal.title') }}</h3>
         <form @submit.prevent="handleInvite" class="space-y-4">
           <div v-if="inviteError" class="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">{{ inviteError }}</div>
           <div v-if="inviteSuccess" class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 text-sm text-emerald-400">{{ inviteSuccess }}</div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Email</label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('users.inviteModal.email') }}</label>
             <input v-model="inviteEmail" type="email" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="user@example.com" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Role</label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('users.inviteModal.role') }}</label>
             <select v-model="inviteRole" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="viewer">Viewer</option>
-              <option value="admin">Admin</option>
+              <option value="viewer">{{ t('users.inviteModal.viewer') }}</option>
+              <option value="admin">{{ t('users.inviteModal.admin') }}</option>
             </select>
-            <p class="text-xs text-gray-500 mt-1">Viewers can see dashboards but cannot modify settings.</p>
+            <p class="text-xs text-gray-500 mt-1">{{ t('users.inviteModal.roleHint') }}</p>
           </div>
           <div class="flex justify-end gap-3 pt-2">
-            <button type="button" @click="showInvite = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">Cancel</button>
+            <button type="button" @click="showInvite = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">{{ t('common.cancel') }}</button>
             <button type="submit" :disabled="inviting" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {{ inviting ? 'Sending...' : 'Send Invite' }}
+              {{ inviting ? t('users.inviteModal.sending') : t('users.inviteModal.send') }}
             </button>
           </div>
         </form>
@@ -164,9 +164,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '../api'
 import { useAuthStore } from '../stores/auth'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const currentUserId = computed(() => auth.user?.user_id)
 

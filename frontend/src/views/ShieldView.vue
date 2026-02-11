@@ -1,10 +1,10 @@
 <template>
   <div>
-    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">Shield Deployment</h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">{{ t('shieldPage.title') }}</h1>
 
     <div v-if="sites.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
-      <p class="text-gray-400 mb-4">No sites configured.</p>
-      <router-link to="/sites" class="text-blue-400 hover:underline">Add a site first.</router-link>
+      <p class="text-gray-400 mb-4">{{ t('shieldPage.noSites') }}</p>
+      <router-link to="/sites" class="text-blue-400 hover:underline">{{ t('common.addSiteFirst') }}</router-link>
     </div>
 
     <div v-else class="space-y-6">
@@ -28,10 +28,10 @@
               <h2 class="text-base sm:text-lg font-semibold text-white truncate">{{ site.name }}</h2>
               <p class="text-sm text-gray-400 truncate">{{ site.target_url }}</p>
               <p v-if="isActive(site.id)" class="text-xs text-green-400 mt-1">
-                Serving on port {{ getShieldPort(site.id) || site.shield_port }}
+                {{ t('shieldPage.servingOnPort', { port: getShieldPort(site.id) || site.shield_port }) }}
               </p>
               <p v-else-if="!site.shield_port" class="text-xs text-amber-400 mt-1">
-                No shield port configured — set one in site settings to deploy
+                {{ t('shieldPage.noPortConfigured') }}
               </p>
             </div>
           </div>
@@ -42,7 +42,7 @@
               :disabled="shieldStore.loading"
               class="px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
             >
-              Undeploy
+              {{ t('shieldPage.undeploy') }}
             </button>
             <button
               v-else
@@ -50,7 +50,7 @@
               :disabled="shieldStore.loading || !site.shield_port"
               class="px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
             >
-              Deploy
+              {{ t('shieldPage.deploy') }}
             </button>
           </div>
         </div>
@@ -58,11 +58,11 @@
         <div v-if="isActive(site.id)" class="border-t border-gray-800">
           <div class="px-4 sm:px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <span class="text-gray-400">Shield Port:</span>
+              <span class="text-gray-400">{{ t('shieldPage.shieldPort') }}</span>
               <code class="ml-2 bg-gray-800 px-2 py-0.5 rounded text-blue-400">{{ getShieldPort(site.id) || site.shield_port }}</code>
             </div>
             <div>
-              <span class="text-gray-400">Proxy Config:</span>
+              <span class="text-gray-400">{{ t('shieldPage.proxyConfig') }}</span>
               <code class="ml-2 bg-gray-800 px-2 py-0.5 rounded text-green-400 text-xs">
                 proxy_pass http://frontwall:{{ getShieldPort(site.id) || site.shield_port }};
               </code>
@@ -72,8 +72,8 @@
           <div class="px-4 sm:px-6 py-4 border-t border-gray-800">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
               <div>
-                <h3 class="text-sm font-semibold text-white">Learn Mode</h3>
-                <p class="text-xs text-gray-500 mt-0.5">Auto-captures POST rules, 404 assets, and CSP-blocked domains from the browser</p>
+                <h3 class="text-sm font-semibold text-white">{{ t('shieldPage.learnMode') }}</h3>
+                <p class="text-xs text-gray-500 mt-0.5">{{ t('shieldPage.learnModeDesc') }}</p>
               </div>
               <label class="flex items-center cursor-pointer">
                 <div class="relative">
@@ -87,13 +87,13 @@
                   <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
                 </div>
                 <span class="ml-3 text-sm font-medium" :class="getLearnMode(site.id) ? 'text-amber-400' : 'text-gray-400'">
-                  {{ getLearnMode(site.id) ? 'Active' : 'Off' }}
+                  {{ getLearnMode(site.id) ? t('shieldPage.learnActive') : t('shieldPage.learnOff') }}
                 </span>
               </label>
             </div>
 
             <div v-if="(siteLearnedPosts[site.id] || []).length > 0" class="mb-3">
-              <h4 class="text-xs font-medium text-gray-300 mb-1.5">Learned POST Rules ({{ siteLearnedPosts[site.id].length }})</h4>
+              <h4 class="text-xs font-medium text-gray-300 mb-1.5">{{ t('shieldPage.learnedPostRules') }} ({{ siteLearnedPosts[site.id].length }})</h4>
               <div class="divide-y divide-gray-800 bg-gray-800/50 rounded-lg overflow-hidden">
                 <div v-for="(post, idx) in siteLearnedPosts[site.id]" :key="idx" class="px-3 py-2">
                   <div class="flex items-center justify-between">
@@ -105,7 +105,7 @@
             </div>
 
             <div v-if="(siteLearnedAssets[site.id] || []).length > 0" class="mb-3">
-              <h4 class="text-xs font-medium text-gray-300 mb-1.5">Learned Assets ({{ siteLearnedAssets[site.id].length }})</h4>
+              <h4 class="text-xs font-medium text-gray-300 mb-1.5">{{ t('shieldPage.learnedAssets') }} ({{ siteLearnedAssets[site.id].length }})</h4>
               <div class="divide-y divide-gray-800 bg-gray-800/50 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
                 <div v-for="(asset, idx) in siteLearnedAssets[site.id]" :key="idx" class="px-3 py-1.5">
                   <div class="flex items-center justify-between">
@@ -121,8 +121,8 @@
 
             <div v-if="(siteLearnedCsp[site.id] || []).length > 0" class="mb-3">
               <h4 class="text-xs font-medium text-gray-300 mb-1.5">
-                Learned CSP Origins ({{ siteLearnedCsp[site.id].length }})
-                <span class="text-gray-500 font-normal ml-1">— will be included in CSP on next deploy</span>
+                {{ t('shieldPage.learnedCspOrigins') }} ({{ siteLearnedCsp[site.id].length }})
+                <span class="text-gray-500 font-normal ml-1">{{ t('shieldPage.cspHint') }}</span>
               </h4>
               <div class="flex flex-wrap gap-1.5 bg-gray-800/50 rounded-lg p-3">
                 <span
@@ -137,7 +137,7 @@
               v-if="getLearnMode(site.id) && !(siteLearnedPosts[site.id] || []).length && !(siteLearnedAssets[site.id] || []).length && !(siteLearnedCsp[site.id] || []).length"
               class="text-xs text-gray-500 bg-gray-800/50 rounded-lg p-3 text-center"
             >
-              Waiting for traffic...
+              {{ t('shieldPage.waitingTraffic') }}
             </div>
           </div>
         </div>
@@ -153,10 +153,12 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useSitesStore } from '../stores/sites'
 import { useShieldStore } from '../stores/shield'
 import api from '../api'
 
+const { t } = useI18n()
 const sitesStore = useSitesStore()
 const shieldStore = useShieldStore()
 const { sites } = storeToRefs(sitesStore)
@@ -233,7 +235,7 @@ async function handleDeploy(siteId) {
     await shieldStore.deploy(siteId)
   } catch (e) {
     const detail = e.response?.data?.detail
-    deployError.value = Array.isArray(detail) ? detail.map(d => d.msg || d).join('. ') : (detail || 'Failed to deploy shield')
+    deployError.value = Array.isArray(detail) ? detail.map(d => d.msg || d).join('. ') : (detail || t('shieldPage.deployFailed'))
   }
 }
 
@@ -245,7 +247,7 @@ async function handleUndeploy(siteId) {
     delete siteLearnedAssets[siteId]
     delete siteLearnedCsp[siteId]
   } catch (e) {
-    deployError.value = e.response?.data?.detail || 'Failed to undeploy shield'
+    deployError.value = e.response?.data?.detail || t('shieldPage.undeployFailed')
   }
 }
 
@@ -258,7 +260,7 @@ async function handleToggleLearn(siteId) {
       startLearnPoll()
     }
   } catch (e) {
-    deployError.value = e.response?.data?.detail || 'Failed to toggle learn mode'
+    deployError.value = e.response?.data?.detail || t('shieldPage.learnToggleFailed')
   }
 }
 </script>

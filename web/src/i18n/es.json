@@ -1,0 +1,116 @@
+{
+  "lang": { "en": "English", "es": "Español" },
+  "nav": {
+    "features": "Características",
+    "howItWorks": "Cómo funciona",
+    "protection": "Protección",
+    "install": "Instalación",
+    "viewGithub": "Ver en GitHub",
+    "download": "Descargar"
+  },
+  "hero": {
+    "badge": "Protección WordPress de código abierto",
+    "titleLine1": "Tu WordPress.",
+    "titleLine2": "Blindado.",
+    "subtitle": "FrontWall se coloca delante de tu sitio WordPress, cachea todo como contenido estático y lo sirve a través de una capa de seguridad reforzada. Superficie de ataque cero. Funcionalidad completa.",
+    "getStarted": "Empezar",
+    "seeHowItWorks": "Ver cómo funciona"
+  },
+  "stats": {
+    "staticServing": "Servicio estático",
+    "noPhp": "Ejecución PHP en frontend",
+    "securityLayers": "Capas de seguridad",
+    "responseTime": "Tiempo de respuesta"
+  },
+  "features": {
+    "title": "Defensa en profundidad",
+    "subtitle": "Cada capa añade protección. Cada petición se verifica. Tu WordPress permanece oculto tras un muro impenetrable.",
+    "staticCaching": "Caché estática",
+    "staticCachingDesc": "Tu sitio WordPress completo se rastrea, cachea y sirve como archivos estáticos puros. Sin PHP, sin consultas a base de datos, sin vulnerabilidades.",
+    "waf": "Firewall de aplicaciones web",
+    "wafDesc": "El WAF multicapa bloquea inyección SQL, XSS, recorrido de rutas, escáneres de bots y patrones de ataque conocidos antes de que lleguen a nada.",
+    "postSanitization": "Sanitización POST",
+    "postSanitizationDesc": "Los formularios de contacto y peticiones AJAX se validan con reglas estrictas, se sanean contra ataques de inyección y se reenvían a tu WordPress.",
+    "geoip": "Bloqueo GeoIP",
+    "geoipDesc": "Bloquea países enteros conocidos por alto volumen de ataques. Usa cabeceras de Cloudflare para detección sin latencia con respaldo GeoIP opcional.",
+    "rateLimit": "Limitación de tasa",
+    "rateLimitDesc": "Limitación de tasa por IP con token bucket previene fuerza bruta, DDoS y agotamiento de recursos. Los assets estáticos evitan los límites de forma inteligente.",
+    "analytics": "Analíticas de seguridad",
+    "analyticsDesc": "Panel en tiempo real con detección de amenazas, seguimiento de IPs atacantes, líneas temporales de eventos y desgloses de severidad para visibilidad total.",
+    "csp": "CSP dinámico",
+    "cspDesc": "La Política de Seguridad de Contenido se autogenera a partir de los recursos reales de tu sitio. El modo aprendizaje descubre orígenes externos automáticamente.",
+    "learnMode": "Modo aprendizaje",
+    "learnModeDesc": "Descubre automáticamente reglas POST, orígenes CSP y assets faltantes. FrontWall aprende las necesidades de tu sitio, luego se blinda.",
+    "multiSite": "Soporte multi-sitio",
+    "multiSiteDesc": "Protege múltiples sitios WordPress desde una sola instancia de FrontWall, cada uno con configuraciones de seguridad y puertos independientes."
+  },
+  "howItWorks": {
+    "title": "Cómo funciona",
+    "subtitle": "Tres pasos simples para transformar tu WordPress de una vulnerabilidad en una fortaleza.",
+    "step1Title": "Añade tu sitio",
+    "step1Desc": "Introduce la URL de tu WordPress y configura los ajustes del crawler. FrontWall descubre automáticamente todas las páginas, assets y formularios.",
+    "step2Title": "Rastrea y configura",
+    "step2Desc": "El spider captura todo tu sitio. Revisa las páginas cacheadas, configura reglas POST para formularios y ajusta la configuración de seguridad.",
+    "step3Title": "Despliega el escudo",
+    "step3Desc": "Un clic despliega un proxy inverso reforzado. Todo el tráfico se sirve desde la caché. Los ataques se bloquean. Tu WordPress es invisible."
+  },
+  "protection": {
+    "title": "Qué bloqueamos",
+    "subtitle": "FrontWall protege contra los vectores de ataque WordPress más comunes y peligrosos.",
+    "sqlInjection": "Inyección SQL",
+    "sqlInjectionDetail": "Intentos de manipulación de base de datos",
+    "xss": "Ataques XSS",
+    "xssDetail": "Payloads de cross-site scripting",
+    "pathTraversal": "Recorrido de rutas",
+    "pathTraversalDetail": "Intentos de escape de directorio",
+    "bruteForce": "Fuerza bruta",
+    "bruteForceDetail": "Relleno de credenciales de acceso",
+    "botScanners": "Escáneres de bots",
+    "botScannersDetail": "SQLMap, Nikto, Nmap, etc.",
+    "lfi": "LFI / RFI",
+    "lfiDetail": "Inclusión de archivos locales y remotos",
+    "wpAdmin": "Acceso wp-admin",
+    "wpAdminDetail": "Exposición del panel de administración",
+    "xmlrpc": "xmlrpc.php",
+    "xmlrpcDetail": "Ataques de amplificación XML-RPC",
+    "nullByte": "Inyección de byte nulo",
+    "nullByteDetail": "Manipulación del sistema de archivos",
+    "doubleEncoding": "Doble codificación",
+    "doubleEncodingDetail": "Intentos de evadir el WAF",
+    "overflow": "Desbordamiento de payload",
+    "overflowDetail": "Cuerpos de petición sobredimensionados",
+    "geoThreats": "Amenazas geográficas",
+    "geoThreatsDetail": "Tráfico de países de alto riesgo"
+  },
+  "architecture": {
+    "title": "Arquitectura",
+    "subtitle": "Tu WordPress nunca ve internet. FrontWall se encarga de todo.",
+    "visitors": "Visitantes",
+    "visitorsDesc": "Tráfico de internet",
+    "frontwall": "FrontWall",
+    "frontwallDesc": "WAF + Caché estática",
+    "postOnly": "Solo POST",
+    "wordpress": "WordPress",
+    "wordpressDesc": "Origen oculto",
+    "getStatic": "GET → Estático",
+    "postSanitized": "POST → Saneado",
+    "attacksBlocked": "Ataques → Bloqueados"
+  },
+  "install": {
+    "title": "Inicio rápido",
+    "subtitle": "Pon FrontWall en marcha en menos de 2 minutos con Docker.",
+    "step1": "Clona el repositorio",
+    "step2": "Inicia los servicios",
+    "step3": "Abre el panel de control",
+    "docsLink": "Documentación completa en GitHub"
+  },
+  "contributing": {
+    "title": "Código abierto y comunidad",
+    "subtitle": "FrontWall es software libre y de código abierto construido por la comunidad. Las contribuciones, reportes de errores y solicitudes de funcionalidades son bienvenidos.",
+    "viewGithub": "Ver en GitHub",
+    "reportIssue": "Reportar un problema"
+  },
+  "footer": {
+    "tagline": "Proxy inverso de seguridad WordPress de código abierto. Construido con principios de seguridad ante todo."
+  }
+}

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">Security Analytics</h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-white mb-6">{{ t('analytics.title') }}</h1>
 
     <div v-if="sites.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
       <p class="text-gray-400">No sites configured. <router-link to="/sites" class="text-blue-400 hover:underline">Add a site first.</router-link></p>
@@ -17,14 +17,29 @@
             <option v-for="site in sites" :key="site.id" :value="site.id">{{ site.name }}</option>
           </select>
         </div>
-        <div class="flex gap-2 flex-wrap">
-          <button
-            v-for="opt in timeRangeOptions"
-            :key="opt.value"
-            @click="timeRange = opt.value"
-            class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-            :class="timeRange === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
-          >{{ opt.label }}</button>
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex gap-2 flex-wrap">
+            <button
+              v-for="opt in timeRangeOptions"
+              :key="opt.value"
+              @click="timeRange = opt.value"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+              :class="timeRange === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+            >{{ opt.label }}</button>
+          </div>
+          <div class="relative" ref="exportDropdownRef">
+            <button
+              @click="showExportMenu = !showExportMenu"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 transition-colors"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <div v-if="showExportMenu" class="absolute right-0 top-full mt-1 w-36 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
+              <button @click="exportData('csv')" class="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors">Export CSV</button>
+              <button @click="exportData('json')" class="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors">Export JSON</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -87,22 +102,22 @@
           <h2 class="text-lg font-semibold text-white mb-4">Threat Timeline</h2>
           <div class="h-64">
             <Bar v-if="timelineData.labels.length > 0" :data="timelineData" :options="timelineOptions" />
-            <div v-else class="h-full flex items-center justify-center text-gray-500">No events in this period</div>
+            <div v-else class="h-full flex items-center justify-center text-gray-500">{{ t('analytics.noEventsInPeriod') }}</div>
           </div>
         </div>
 
         <!-- Two-column: Event Types + Severity -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h2 class="text-lg font-semibold text-white mb-4">Event Type Breakdown</h2>
+            <h2 class="text-lg font-semibold text-white mb-4">{{ t('analytics.eventTypeBreakdown') }}</h2>
             <div class="h-64 flex items-center justify-center">
               <Doughnut v-if="eventTypesData.labels.length > 0" :data="eventTypesData" :options="doughnutOptions" />
-              <div v-else class="text-gray-500">No data</div>
+              <div v-else class="text-gray-500">{{ t('analytics.noData') }}</div>
             </div>
           </div>
 
           <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h2 class="text-lg font-semibold text-white mb-4">Severity Distribution</h2>
+            <h2 class="text-lg font-semibold text-white mb-4">{{ t('analytics.severityDistribution') }}</h2>
             <div class="space-y-4 mt-6">
               <div v-for="sev in severityBars" :key="sev.label" class="flex items-center gap-3">
                 <span class="w-16 text-xs font-medium capitalize" :class="sev.textColor">{{ sev.label }}</span>
@@ -117,17 +132,17 @@
 
         <!-- Top Attackers Table -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">Top Attackers</h2>
+          <h2 class="text-lg font-semibold text-white mb-4">{{ t('analytics.topAttackers') }}</h2>
           <div class="overflow-x-auto">
             <table v-if="attackers.length > 0" class="w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-800">
-                  <th class="text-left py-3 px-4 text-gray-400 font-medium">IP Address</th>
-                  <th class="text-left py-3 px-4 text-gray-400 font-medium">Events</th>
-                  <th class="text-left py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">Last Seen</th>
-                  <th class="text-left py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">Top Attack</th>
-                  <th class="text-left py-3 px-4 text-gray-400 font-medium">Severity</th>
-                  <th class="text-right py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">Action</th>
+                  <th class="text-left py-3 px-4 text-gray-400 font-medium">{{ t('analytics.ipAddress') }}</th>
+                  <th class="text-left py-3 px-4 text-gray-400 font-medium">{{ t('analytics.events') }}</th>
+                  <th class="text-left py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">{{ t('analytics.lastSeen') }}</th>
+                  <th class="text-left py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">{{ t('analytics.topAttack') }}</th>
+                  <th class="text-left py-3 px-4 text-gray-400 font-medium">{{ t('analytics.severity') }}</th>
+                  <th class="text-right py-3 px-4 text-gray-400 font-medium hidden sm:table-cell">{{ t('analytics.action') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,23 +160,23 @@
                       class="px-3 py-1 text-xs font-medium text-red-400 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"
                       :disabled="blockingIp === attacker.ip"
                     >
-                      {{ blockingIp === attacker.ip ? 'Blocking...' : 'Block IP' }}
+                      {{ blockingIp === attacker.ip ? t('analytics.blocking') : t('analytics.blockIP') }}
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <div v-else class="py-8 text-center text-gray-500">No attackers detected</div>
+            <div v-else class="py-8 text-center text-gray-500">{{ t('analytics.noAttackers') }}</div>
           </div>
         </div>
 
         <!-- Live Threat Feed -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-white">Live Threat Feed</h2>
+            <h2 class="text-lg font-semibold text-white">{{ t('analytics.liveFeed') }}</h2>
             <div class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-              <span class="text-xs text-gray-400">Auto-refresh 3s</span>
+              <span class="text-xs text-gray-400">{{ t('analytics.autoRefresh') }}</span>
             </div>
           </div>
           <div class="space-y-2 max-h-96 overflow-y-auto">
@@ -184,7 +199,7 @@
                 <span class="text-gray-600 truncate">{{ event.path }}</span>
               </div>
             </div>
-            <div v-if="recentEvents.length === 0" class="py-8 text-center text-gray-500">No events yet</div>
+            <div v-if="recentEvents.length === 0" class="py-8 text-center text-gray-500">{{ t('analytics.noEvents') }}</div>
           </div>
         </div>
       </div>
@@ -195,6 +210,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useSitesStore } from '../stores/sites'
 import { Bar, Doughnut } from 'vue-chartjs'
 import {
@@ -211,11 +227,14 @@ import api from '../api'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend)
 
+const { t } = useI18n()
 const sitesStore = useSitesStore()
 const { sites } = storeToRefs(sitesStore)
 
 const selectedSiteId = ref(null)
 const timeRange = ref(24)
+const showExportMenu = ref(false)
+const exportDropdownRef = ref(null)
 const summary = ref({})
 const timeline = ref([])
 const eventTypes = ref([])
@@ -405,6 +424,18 @@ async function fetchRecent() {
   } catch { /* ignore */ }
 }
 
+function exportData(fmt) {
+  showExportMenu.value = false
+  if (!selectedSiteId.value) return
+  window.open(`/api/analytics/${selectedSiteId.value}/export?hours=${timeRange.value}&fmt=${fmt}`, '_blank')
+}
+
+function handleClickOutside(e) {
+  if (exportDropdownRef.value && !exportDropdownRef.value.contains(e.target)) {
+    showExportMenu.value = false
+  }
+}
+
 async function blockIP(ip) {
   if (!selectedSiteId.value) return
   blockingIp.value = ip
@@ -438,9 +469,11 @@ onMounted(async () => {
     selectedSiteId.value = sites.value[0].id
   }
   pollInterval = setInterval(fetchRecent, 3000)
+  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval)
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>

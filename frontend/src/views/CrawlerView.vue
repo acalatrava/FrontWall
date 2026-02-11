@@ -2,7 +2,7 @@
   <div>
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold text-white">Crawler</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">{{ t('crawler.title') }}</h1>
         <p class="text-sm text-gray-400 mt-1">Site: {{ site?.name || siteId }}</p>
       </div>
       <div class="flex gap-2 sm:gap-3">
@@ -12,36 +12,36 @@
           :disabled="starting"
           class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
         >
-          {{ starting ? 'Starting...' : 'Start Crawl' }}
+          {{ starting ? t('crawler.starting') : t('crawler.startCrawl') }}
         </button>
         <button
           v-else
           @click="stopCrawl"
           class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
-          Stop Crawl
+          {{ t('crawler.stopCrawl') }}
         </button>
       </div>
     </div>
 
     <div v-if="progress" class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6 mb-6">
-      <h2 class="text-lg font-semibold text-white mb-4">Crawl Progress</h2>
+      <h2 class="text-lg font-semibold text-white mb-4">{{ t('crawler.progress') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div class="text-center">
           <div class="text-2xl font-bold text-blue-400">{{ progress.pages_crawled }}</div>
-          <div class="text-xs text-gray-400">Pages Crawled</div>
+          <div class="text-xs text-gray-400">{{ t('crawler.pagesCrawled') }}</div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-bold text-purple-400">{{ progress.pages_found }}</div>
-          <div class="text-xs text-gray-400">Pages Found</div>
+          <div class="text-xs text-gray-400">{{ t('crawler.pagesFound') }}</div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-bold text-green-400">{{ progress.assets_downloaded }}</div>
-          <div class="text-xs text-gray-400">Assets Downloaded</div>
+          <div class="text-xs text-gray-400">{{ t('crawler.assetsDownloaded') }}</div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-bold text-red-400">{{ progress.errors }}</div>
-          <div class="text-xs text-gray-400">Errors</div>
+          <div class="text-xs text-gray-400">{{ t('crawler.errorsLabel') }}</div>
         </div>
       </div>
       <div class="w-full bg-gray-800 rounded-full h-2">
@@ -54,10 +54,10 @@
 
     <div class="bg-gray-900 border border-gray-800 rounded-xl">
       <div class="px-4 sm:px-6 py-4 border-b border-gray-800">
-        <h2 class="text-lg font-semibold text-white">Crawl History</h2>
+        <h2 class="text-lg font-semibold text-white">{{ t('crawler.history') }}</h2>
       </div>
       <div v-if="jobs.length === 0" class="p-4 sm:p-6 text-center text-gray-500">
-        No crawl jobs yet. Start a crawl to begin caching the site.
+        {{ t('crawler.noJobs') }}
       </div>
       <div v-else class="divide-y divide-gray-800">
         <div v-for="job in jobs" :key="job.id" class="px-4 sm:px-6 py-4">
@@ -72,8 +72,8 @@
               <span class="text-sm text-gray-400">{{ formatDate(job.created_at) }}</span>
             </div>
             <div class="text-sm text-gray-400">
-              {{ job.pages_crawled }} pages / {{ job.assets_downloaded }} assets
-              <span v-if="job.errors > 0" class="text-red-400 ml-2">{{ job.errors }} errors</span>
+              {{ job.pages_crawled }} {{ t('crawler.pages') }} / {{ job.assets_downloaded }} {{ t('crawler.assets') }}
+              <span v-if="job.errors > 0" class="text-red-400 ml-2">{{ job.errors }} {{ t('common.errors') }}</span>
             </div>
           </div>
         </div>
@@ -84,8 +84,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '../api'
 
+const { t } = useI18n()
 const props = defineProps({ siteId: String })
 
 const site = ref(null)

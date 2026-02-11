@@ -2,20 +2,20 @@
   <div>
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold text-white">POST Exception Rules</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">{{ t('rules.title') }}</h1>
         <p class="text-sm text-gray-400 mt-1">Site: {{ site?.name || siteId }}</p>
       </div>
       <button
         @click="openCreateModal"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
       >
-        + Add Rule
+        {{ t('rules.addRule') }}
       </button>
     </div>
 
     <div v-if="detectedForms.length > 0" class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-6">
-      <h3 class="text-sm font-semibold text-purple-400 mb-2">Detected Forms</h3>
-      <p class="text-xs text-gray-400 mb-3">These forms were detected during crawling. Click to create a rule from a form.</p>
+      <h3 class="text-sm font-semibold text-purple-400 mb-2">{{ t('rules.detectedForms') }}</h3>
+      <p class="text-xs text-gray-400 mb-3">{{ t('rules.detectedFormsDesc') }}</p>
       <div class="space-y-2">
         <div v-for="(form, idx) in detectedForms" :key="idx" class="flex items-center justify-between bg-gray-900/50 rounded-lg px-4 py-2">
           <div>
@@ -23,14 +23,14 @@
             <span class="text-xs text-gray-500 ml-2">{{ form.fields.length }} fields</span>
           </div>
           <button @click="createFromForm(form)" class="text-xs text-purple-400 hover:text-purple-300">
-            Create Rule
+            {{ t('rules.createRule') }}
           </button>
         </div>
       </div>
     </div>
 
     <div v-if="rules.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
-      <p class="text-gray-400">No POST rules configured. POST requests will be blocked by the shield.</p>
+      <p class="text-gray-400">{{ t('rules.noRules') }}</p>
     </div>
 
     <div v-else class="space-y-4">
@@ -70,7 +70,7 @@
             @click="deleteRule(rule.id)"
             class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-sm text-red-400 rounded-lg transition-colors"
           >
-            Delete
+            {{ t('common.delete') }}
           </button>
         </div>
       </div>
@@ -78,51 +78,51 @@
 
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 overflow-y-auto py-8">
       <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-2xl p-6 mx-4">
-        <h2 class="text-xl font-bold text-white mb-4">{{ editingRule ? 'Edit Rule' : 'Create POST Rule' }}</h2>
+        <h2 class="text-xl font-bold text-white mb-4">{{ editingRule ? t('rules.modal.editTitle') : t('rules.modal.createTitle') }}</h2>
         <form @submit.prevent="handleSave" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Rule Name</label>
+              <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('rules.modal.ruleName') }}</label>
               <input v-model="form.name" required class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contact Form" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">URL Pattern</label>
+              <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('rules.modal.urlPattern') }}</label>
               <input v-model="form.url_pattern" required class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="/contact" />
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Forward To (WordPress URL)</label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('rules.modal.forwardTo') }}</label>
             <input v-model="form.forward_to" required type="url" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://mysite.com/wp-admin/admin-post.php" />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Success Redirect</label>
+              <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('rules.modal.successRedirect') }}</label>
               <input v-model="form.success_redirect" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="/thank-you" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Honeypot Field</label>
+              <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('rules.modal.honeypotField') }}</label>
               <input v-model="form.honeypot_field" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="website_url" />
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Rate Limit (requests)</label>
+              <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('rules.modal.rateLimitReq') }}</label>
               <input v-model.number="form.rate_limit_requests" type="number" min="1" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Rate Window (seconds)</label>
+              <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('rules.modal.rateLimitWin') }}</label>
               <input v-model.number="form.rate_limit_window" type="number" min="1" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-gray-300">Allowed Fields</label>
-              <button type="button" @click="addField" class="text-xs text-blue-400 hover:text-blue-300">+ Add Field</button>
+              <label class="text-sm font-medium text-gray-300">{{ t('rules.modal.allowedFields') }}</label>
+              <button type="button" @click="addField" class="text-xs text-blue-400 hover:text-blue-300">{{ t('rules.modal.addField') }}</button>
             </div>
             <div class="space-y-2">
               <div v-for="(field, idx) in form.fields" :key="idx" class="flex flex-wrap sm:flex-nowrap gap-2 items-start">
-                <input v-model="field.field_name" placeholder="Field name" class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input v-model="field.field_name" :placeholder="t('rules.modal.fieldName')" class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <select v-model="field.field_type" class="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="text">text</option>
                   <option value="email">email</option>
@@ -133,7 +133,7 @@
                 <input v-model.number="field.max_length" type="number" placeholder="Max len" class="w-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <label class="flex items-center gap-1 text-xs text-gray-400 py-2">
                   <input v-model="field.required" type="checkbox" class="rounded bg-gray-800 border-gray-700" />
-                  Req
+                  {{ t('rules.modal.req') }}
                 </label>
                 <button type="button" @click="form.fields.splice(idx, 1)" class="p-2 text-red-400 hover:bg-red-500/10 rounded">
                   &times;
@@ -144,9 +144,9 @@
 
           <div v-if="formError" class="text-sm text-red-400">{{ formError }}</div>
           <div class="flex justify-end gap-3 pt-2">
-            <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-400">Cancel</button>
+            <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-400">{{ t('common.cancel') }}</button>
             <button type="submit" :disabled="saving" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {{ saving ? 'Saving...' : 'Save Rule' }}
+              {{ saving ? t('common.saving') : t('rules.modal.saveRule') }}
             </button>
           </div>
         </form>
@@ -157,8 +157,10 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '../api'
 
+const { t } = useI18n()
 const props = defineProps({ siteId: String })
 
 const site = ref(null)
@@ -239,14 +241,14 @@ async function handleSave() {
     showModal.value = false
     await loadData()
   } catch (e) {
-    formError.value = e.response?.data?.detail || 'Failed to save rule'
+    formError.value = e.response?.data?.detail || t('rules.modal.failed')
   } finally {
     saving.value = false
   }
 }
 
 async function deleteRule(ruleId) {
-  if (!confirm('Delete this rule?')) return
+  if (!confirm(t('rules.deleteConfirm'))) return
   try {
     await api.delete(`/rules/${ruleId}`)
     rules.value = rules.value.filter(r => r.id !== ruleId)

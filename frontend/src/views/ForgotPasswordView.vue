@@ -5,16 +5,16 @@
         <svg class="w-16 h-16 mx-auto text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
-        <h1 class="mt-4 text-2xl font-bold text-white">Reset Password</h1>
-        <p class="mt-1 text-gray-400">Enter your email to receive a reset link</p>
+        <h1 class="mt-4 text-2xl font-bold text-white">{{ t('auth.forgotPw.title') }}</h1>
+        <p class="mt-1 text-gray-400">{{ t('auth.forgotPw.subtitle') }}</p>
       </div>
 
       <div v-if="sent" class="bg-gray-900 rounded-xl border border-gray-800 p-5 sm:p-8 text-center">
         <div class="w-12 h-12 mx-auto mb-4 bg-emerald-500/10 rounded-full flex items-center justify-center">
           <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         </div>
-        <p class="text-gray-300 mb-2">Check your email</p>
-        <p class="text-sm text-gray-500 mb-6">If an account exists with that email, we've sent a reset link.</p>
+        <p class="text-gray-300 mb-2">{{ t('auth.forgotPw.sentTitle') }}</p>
+        <p class="text-sm text-gray-500 mb-6">{{ t('auth.forgotPw.sentMessage') }}</p>
         <router-link to="/login" class="text-sm text-blue-400 hover:text-blue-300">Back to Sign In</router-link>
       </div>
 
@@ -40,8 +40,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '../api'
 
+const { t } = useI18n()
 const email = ref('')
 const error = ref('')
 const loading = ref(false)

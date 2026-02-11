@@ -1,0 +1,116 @@
+{
+  "lang": { "en": "English", "es": "Español" },
+  "nav": {
+    "features": "Features",
+    "howItWorks": "How It Works",
+    "protection": "Protection",
+    "install": "Installation",
+    "viewGithub": "View on GitHub",
+    "download": "Download"
+  },
+  "hero": {
+    "badge": "Open-source WordPress protection",
+    "titleLine1": "Your WordPress.",
+    "titleLine2": "Armored.",
+    "subtitle": "FrontWall sits in front of your WordPress site, caches everything as static content and serves it through a hardened security layer. Zero attack surface. Full functionality.",
+    "getStarted": "Get Started",
+    "seeHowItWorks": "See How It Works"
+  },
+  "stats": {
+    "staticServing": "Static serving",
+    "noPhp": "PHP execution on frontend",
+    "securityLayers": "Security layers",
+    "responseTime": "Response time"
+  },
+  "features": {
+    "title": "Defense in Depth",
+    "subtitle": "Every layer adds protection. Every request is verified. Your WordPress stays hidden behind an impenetrable wall.",
+    "staticCaching": "Static Caching",
+    "staticCachingDesc": "Your entire WordPress site is crawled, cached, and served as pure static files. No PHP, no database queries, no vulnerabilities.",
+    "waf": "Web Application Firewall",
+    "wafDesc": "Multi-layer WAF blocks SQL injection, XSS, path traversal, bot scanners, and known attack patterns before they reach anything.",
+    "postSanitization": "POST Sanitization",
+    "postSanitizationDesc": "Contact forms and AJAX requests are validated against strict rules, sanitized for injection attacks, then forwarded to your WordPress.",
+    "geoip": "GeoIP Blocking",
+    "geoipDesc": "Block entire countries known for high attack volumes. Uses Cloudflare headers for zero-latency detection with optional GeoIP fallback.",
+    "rateLimit": "Rate Limiting",
+    "rateLimitDesc": "Per-IP token bucket rate limiting prevents brute force, DDoS, and resource exhaustion. Static assets bypass limits intelligently.",
+    "analytics": "Security Analytics",
+    "analyticsDesc": "Real-time dashboard with threat detection, attacker IP tracking, event timelines, and severity breakdowns for full visibility.",
+    "csp": "Dynamic CSP",
+    "cspDesc": "Content Security Policy is auto-generated from your site's actual resources. Learn mode discovers external origins automatically.",
+    "learnMode": "Learn Mode",
+    "learnModeDesc": "Automatically discover POST rules, CSP origins, and missing assets. FrontWall learns your site's needs, then locks down.",
+    "multiSite": "Multi-Site Support",
+    "multiSiteDesc": "Protect multiple WordPress sites from a single FrontWall instance, each with independent security configurations and ports."
+  },
+  "howItWorks": {
+    "title": "How It Works",
+    "subtitle": "Three simple steps to transform your WordPress from a liability into a fortress.",
+    "step1Title": "Add Your Site",
+    "step1Desc": "Enter your WordPress URL and configure crawler settings. FrontWall automatically discovers all pages, assets, and forms.",
+    "step2Title": "Crawl & Configure",
+    "step2Desc": "The spider captures your entire site. Review cached pages, set up POST rules for forms, and fine-tune security settings.",
+    "step3Title": "Deploy the Shield",
+    "step3Desc": "One click deploys a hardened reverse proxy. All traffic is served from cache. Attacks are blocked. Your WordPress is invisible."
+  },
+  "protection": {
+    "title": "What We Block",
+    "subtitle": "FrontWall protects against the most common and dangerous WordPress attack vectors.",
+    "sqlInjection": "SQL Injection",
+    "sqlInjectionDetail": "Database manipulation attempts",
+    "xss": "XSS Attacks",
+    "xssDetail": "Cross-site scripting payloads",
+    "pathTraversal": "Path Traversal",
+    "pathTraversalDetail": "Directory escape attempts",
+    "bruteForce": "Brute Force",
+    "bruteForceDetail": "Login credential stuffing",
+    "botScanners": "Bot Scanners",
+    "botScannersDetail": "SQLMap, Nikto, Nmap, etc.",
+    "lfi": "LFI / RFI",
+    "lfiDetail": "Local and remote file inclusion",
+    "wpAdmin": "wp-admin Access",
+    "wpAdminDetail": "Admin panel exposure",
+    "xmlrpc": "xmlrpc.php",
+    "xmlrpcDetail": "XML-RPC amplification attacks",
+    "nullByte": "Null Byte Injection",
+    "nullByteDetail": "File system manipulation",
+    "doubleEncoding": "Double Encoding",
+    "doubleEncodingDetail": "WAF bypass attempts",
+    "overflow": "Payload Overflow",
+    "overflowDetail": "Oversized request bodies",
+    "geoThreats": "Geo Threats",
+    "geoThreatsDetail": "High-risk country traffic"
+  },
+  "architecture": {
+    "title": "Architecture",
+    "subtitle": "Your WordPress never sees the internet. FrontWall handles everything.",
+    "visitors": "Visitors",
+    "visitorsDesc": "Internet traffic",
+    "frontwall": "FrontWall",
+    "frontwallDesc": "WAF + Static Cache",
+    "postOnly": "POST only",
+    "wordpress": "WordPress",
+    "wordpressDesc": "Hidden origin",
+    "getStatic": "GET → Static",
+    "postSanitized": "POST → Sanitized",
+    "attacksBlocked": "Attacks → Blocked"
+  },
+  "install": {
+    "title": "Quick Start",
+    "subtitle": "Get FrontWall running in under 2 minutes with Docker.",
+    "step1": "Clone the repository",
+    "step2": "Start the services",
+    "step3": "Open the dashboard",
+    "docsLink": "Full documentation on GitHub"
+  },
+  "contributing": {
+    "title": "Open Source & Community",
+    "subtitle": "FrontWall is free, open-source software built by the community. Contributions, bug reports, and feature requests are welcome.",
+    "viewGithub": "View on GitHub",
+    "reportIssue": "Report an Issue"
+  },
+  "footer": {
+    "tagline": "Open-source WordPress security reverse proxy. Built with security-first principles."
+  }
+}

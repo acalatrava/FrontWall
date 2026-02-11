@@ -2,29 +2,29 @@
   <div>
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold text-white">Cached Pages</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-white">{{ t('pages.title') }}</h1>
         <p class="text-sm text-gray-400 mt-1">Site: {{ site?.name || siteId }}</p>
       </div>
       <button
         @click="showAddModal = true"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
       >
-        + Add URL
+        {{ t('pages.addUrl') }}
       </button>
     </div>
 
     <div v-if="stats" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
         <div class="text-2xl font-bold text-white">{{ stats.total_pages }}</div>
-        <div class="text-xs text-gray-400">Total Pages</div>
+        <div class="text-xs text-gray-400">{{ t('pages.totalPages') }}</div>
       </div>
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
         <div class="text-2xl font-bold text-blue-400">{{ formatSize(stats.total_size_bytes) }}</div>
-        <div class="text-xs text-gray-400">Cache Size</div>
+        <div class="text-xs text-gray-400">{{ t('pages.cacheSize') }}</div>
       </div>
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
         <div class="text-2xl font-bold text-purple-400">{{ stats.pages_with_forms }}</div>
-        <div class="text-xs text-gray-400">Pages with Forms</div>
+        <div class="text-xs text-gray-400">{{ t('pages.pagesWithForms') }}</div>
       </div>
     </div>
 
@@ -32,12 +32,12 @@
       <div class="px-4 sm:px-6 py-4 border-b border-gray-800 flex items-center gap-3">
         <input
           v-model="search"
-          placeholder="Filter pages..."
+          :placeholder="t('pages.filterPlaceholder')"
           class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
       <div v-if="filteredPages.length === 0" class="p-6 text-center text-gray-500">
-        No pages found.
+        {{ t('pages.noPages') }}
       </div>
       <div v-else class="divide-y divide-gray-800 max-h-[600px] overflow-y-auto">
         <div v-for="page in filteredPages" :key="page.id" class="px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between group hover:bg-gray-800/50">
@@ -46,15 +46,15 @@
             <div class="text-xs text-gray-500 flex gap-3 mt-0.5">
               <span>{{ page.content_type }}</span>
               <span>{{ formatSize(page.size_bytes) }}</span>
-              <span v-if="page.is_manual" class="text-yellow-400">manual</span>
-              <span v-if="page.detected_forms" class="text-purple-400">has forms</span>
+              <span v-if="page.is_manual" class="text-yellow-400">{{ t('pages.manual') }}</span>
+              <span v-if="page.detected_forms" class="text-purple-400">{{ t('pages.hasForms') }}</span>
             </div>
           </div>
           <button
             @click="deletePage(page.id)"
             class="sm:opacity-0 group-hover:opacity-100 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-all self-end sm:self-auto"
           >
-            Remove
+            {{ t('common.remove') }}
           </button>
         </div>
       </div>
@@ -62,10 +62,10 @@
 
     <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-lg p-6 mx-4">
-        <h2 class="text-xl font-bold text-white mb-4">Add URL to Cache</h2>
+        <h2 class="text-xl font-bold text-white mb-4">{{ t('pages.addModal.title') }}</h2>
         <form @submit.prevent="handleAdd" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">URL</label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('pages.addModal.urlLabel') }}</label>
             <input v-model="addUrl" required type="url" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://mysite.com/some-page" />
           </div>
           <label class="flex items-center gap-3 cursor-pointer">
@@ -75,15 +75,15 @@
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
             </div>
             <div>
-              <span class="text-sm font-medium text-gray-300">Enable Spider</span>
-              <p class="text-xs text-gray-500">Discover and crawl linked pages starting from this URL</p>
+              <span class="text-sm font-medium text-gray-300">{{ t('pages.addModal.enableSpider') }}</span>
+              <p class="text-xs text-gray-500">{{ t('pages.addModal.spiderHint') }}</p>
             </div>
           </label>
           <div v-if="addError" class="text-sm text-red-400">{{ addError }}</div>
           <div class="flex justify-end gap-3">
-            <button type="button" @click="showAddModal = false" class="px-4 py-2 text-sm text-gray-400">Cancel</button>
+            <button type="button" @click="showAddModal = false" class="px-4 py-2 text-sm text-gray-400">{{ t('common.cancel') }}</button>
             <button type="submit" :disabled="adding" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {{ adding ? 'Adding...' : 'Add' }}
+              {{ adding ? t('pages.addModal.adding') : t('common.add') }}
             </button>
           </div>
         </form>
@@ -94,8 +94,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '../api'
 
+const { t } = useI18n()
 const props = defineProps({ siteId: String })
 
 const site = ref(null)
@@ -146,14 +148,14 @@ async function handleAdd() {
     addSpider.value = false
     await loadData()
   } catch (e) {
-    addError.value = e.response?.data?.detail || 'Failed to add URL'
+    addError.value = e.response?.data?.detail || t('pages.addModal.failed')
   } finally {
     adding.value = false
   }
 }
 
 async function deletePage(pageId) {
-  if (!confirm('Remove this page from cache?')) return
+  if (!confirm(t('pages.removeConfirm'))) return
   try {
     await api.delete(`/pages/${pageId}`)
     pages.value = pages.value.filter(p => p.id !== pageId)

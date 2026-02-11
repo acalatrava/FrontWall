@@ -23,11 +23,21 @@
         :class="isActive(item.to) ? 'bg-blue-600/20 text-blue-400' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'"
       >
         <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
-        {{ item.label }}
+        {{ t(item.labelKey) }}
       </router-link>
     </nav>
 
     <div class="p-4 border-t border-gray-800 space-y-2">
+      <div class="px-3 py-1">
+        <select
+          :value="currentLocale"
+          @change="switchLocale($event.target.value)"
+          class="w-full px-2.5 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option v-for="loc in locales" :key="loc" :value="loc">{{ localeLabels[loc] }}</option>
+        </select>
+      </div>
+
       <div class="px-3 py-2">
         <div class="text-sm font-medium text-white truncate">{{ auth.user?.username }}</div>
         <div class="flex items-center gap-1.5 mt-0.5">
@@ -45,7 +55,7 @@
         class="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition-colors"
       >
         <LogoutIcon class="w-5 h-5 flex-shrink-0" />
-        Logout
+        {{ t('nav.logout') }}
       </button>
     </div>
   </aside>
@@ -54,7 +64,9 @@
 <script setup>
 import { h, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
+import { setLocale } from '../i18n'
 
 defineProps({ mobileOpen: { type: Boolean, default: false } })
 defineEmits(['close'])
@@ -62,6 +74,13 @@ defineEmits(['close'])
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const { t, locale: currentLocale } = useI18n()
+const locales = ['en', 'es']
+const localeLabels = { en: 'English', es: 'Español' }
+
+function switchLocale(loc) {
+  setLocale(loc)
+}
 
 const isActive = (path) => route.path === path || route.path.startsWith(path + '/')
 
@@ -84,12 +103,12 @@ const UsersIcon = makeIcon(['M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2', 'M9 7a4 4
 const LogoutIcon = makeIcon(['M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4', 'M16 17l5-5-5-5', 'M21 12H9'])
 
 const allNav = [
-  { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon, adminOnly: false },
-  { to: '/sites', label: 'Sites', icon: SitesIcon, adminOnly: false },
-  { to: '/security', label: 'Security', icon: SecurityIcon, adminOnly: false },
-  { to: '/analytics', label: 'Analytics', icon: AnalyticsIcon, adminOnly: false },
-  { to: '/shield', label: 'Shield', icon: ShieldIcon, adminOnly: false },
-  { to: '/users', label: 'Users', icon: UsersIcon, adminOnly: true },
+  { to: '/dashboard', labelKey: 'nav.dashboard', icon: DashboardIcon, adminOnly: false },
+  { to: '/sites', labelKey: 'nav.sites', icon: SitesIcon, adminOnly: false },
+  { to: '/security', labelKey: 'nav.security', icon: SecurityIcon, adminOnly: false },
+  { to: '/analytics', labelKey: 'nav.analytics', icon: AnalyticsIcon, adminOnly: false },
+  { to: '/shield', labelKey: 'nav.shield', icon: ShieldIcon, adminOnly: false },
+  { to: '/users', labelKey: 'nav.users', icon: UsersIcon, adminOnly: true },
 ]
 
 const visibleNav = computed(() =>
