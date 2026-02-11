@@ -70,10 +70,29 @@ class CrawlerEngine:
         if not self.internal_url:
             return url
         parsed = urlparse(url)
+        target_parsed = urlparse(self.target_url)
+        if parsed.netloc and parsed.netloc != target_parsed.netloc:
+            return url
         internal_parsed = urlparse(self.internal_url)
         return f"{internal_parsed.scheme}://{internal_parsed.netloc}{parsed.path}" + (
             f"?{parsed.query}" if parsed.query else ""
         )
+
+    async def _fetch_with_redirect(
+        self, client: httpx.AsyncClient, url: str, max_redirects: int = 10
+    ) -> httpx.Response:
+        """Fetch a URL handling redirects through internal_url when configured."""
+        current_url = self._to_fetch_url(url)
+        for _ in range(max_redirects):
+            resp = await client.get(current_url, follow_redirects=False, timeout=30)
+            if resp.status_code not in (301, 302, 303, 307, 308):
+                return resp
+            location = resp.headers.get("location")
+            if not location:
+                return resp
+            resolved = urljoin(current_url, location)
+            current_url = self._to_fetch_url(resolved)
+        return resp
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -164,8 +183,10 @@ class CrawlerEngine:
             self.visited.add(url)
 
             try:
-                fetch_url = self._to_fetch_url(url)
-                resp = await client.get(fetch_url, follow_redirects=True, timeout=30)
+                if self.internal_url:
+                    resp = await self._fetch_with_redirect(client, url)
+                else:
+                    resp = await client.get(url, follow_redirects=True, timeout=30)
                 content_type = resp.headers.get("content-type", "")
 
                 if "text/html" not in content_type:
@@ -257,6 +278,9 @@ class CrawlerEngine:
         }
         if self.internal_url:
             headers["Host"] = self.override_host
+            target_scheme = urlparse(self.target_url).scheme
+            headers["X-Forwarded-Proto"] = target_scheme
+            headers["X-Forwarded-Host"] = self.override_host
 
         auth = None
         if self.auth:

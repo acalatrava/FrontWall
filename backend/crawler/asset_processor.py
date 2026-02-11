@@ -75,6 +75,26 @@ def _extract_css_urls(css: str, base_url: str) -> set[str]:
     return urls
 
 
+async def _follow_redirects_with_translator(
+    client: httpx.AsyncClient,
+    url: str,
+    url_translator: "Callable[[str], str] | None" = None,
+    max_redirects: int = 10,
+) -> httpx.Response:
+    """Follow redirects, routing each hop through url_translator when set."""
+    current = url_translator(url) if url_translator else url
+    for _ in range(max_redirects):
+        resp = await client.get(current, follow_redirects=False, timeout=30)
+        if resp.status_code not in (301, 302, 303, 307, 308):
+            return resp
+        location = resp.headers.get("location")
+        if not location:
+            return resp
+        resolved = urljoin(current, location)
+        current = url_translator(resolved) if url_translator else resolved
+    return resp
+
+
 async def download_asset(
     client: httpx.AsyncClient,
     url: str,
@@ -89,8 +109,10 @@ async def download_asset(
         return 0
 
     try:
-        fetch_url = url_translator(url) if url_translator else url
-        resp = await client.get(fetch_url, follow_redirects=True, timeout=30)
+        if url_translator:
+            resp = await _follow_redirects_with_translator(client, url, url_translator)
+        else:
+            resp = await client.get(url, follow_redirects=True, timeout=30)
         if resp.status_code != 200:
             logger.debug("Asset %s returned status %d", url, resp.status_code)
             return 0

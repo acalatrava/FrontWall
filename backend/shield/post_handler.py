@@ -43,10 +43,12 @@ class PostHandler:
     def _get_forward_headers(self, request: Request, client_ip: str) -> dict:
         """Build headers for the forwarded request, including Host override."""
         content_type = request.headers.get("content-type", "")
+        target_scheme = urlparse(self.target_url).scheme
         fwd_headers = {
             "Content-Type": content_type,
             "X-Forwarded-For": client_ip,
-            "X-Forwarded-Proto": request.url.scheme,
+            "X-Forwarded-Proto": target_scheme,
+            "X-Forwarded-Host": self.override_host or urlparse(self.target_url).netloc,
             "User-Agent": request.headers.get("user-agent", "FrontWall/1.0"),
         }
         if self.internal_url and self.override_host:

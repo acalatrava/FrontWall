@@ -65,6 +65,8 @@ class AssetLearner:
         }
         if self.internal_url:
             headers["Host"] = self.override_host
+            headers["X-Forwarded-Proto"] = urlparse(self.target_url).scheme
+            headers["X-Forwarded-Host"] = self.override_host
 
         try:
             async with httpx.AsyncClient(
