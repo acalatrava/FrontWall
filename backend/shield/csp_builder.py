@@ -89,25 +89,24 @@ def scan_cache_for_origins(cache_dir: Path, target_url: str | None = None) -> di
 
 
 def build_csp(scan_result: dict) -> str:
-    """Build a Content-Security-Policy string from scan results."""
+    """Build a compact Content-Security-Policy string from scan results.
+
+    Uses a single default-src with all required tokens so the origins list
+    is only included once. This keeps the header small enough for reverse
+    proxies with default buffer sizes (Nginx ~4-8KB).
+    """
     origins = scan_result.get("origins", [])
     origins_str = " ".join(origins)
 
-    script_base = "'self'"
-    if scan_result.get("needs_unsafe_inline"):
-        script_base += " 'unsafe-inline'"
+    extras = ["'self'", "'unsafe-inline'"]
     if scan_result.get("needs_unsafe_eval"):
-        script_base += " 'unsafe-eval'"
+        extras.append("'unsafe-eval'")
+    extras.extend(["data:", "blob:"])
+
+    extras_str = " ".join(extras)
 
     directives = [
-        f"default-src 'self' {origins_str}",
-        f"script-src {script_base} {origins_str}",
-        f"style-src 'self' 'unsafe-inline' {origins_str}",
-        f"img-src 'self' data: blob: {origins_str}",
-        f"font-src 'self' data: {origins_str}",
-        f"connect-src 'self' {origins_str}",
-        f"media-src 'self' {origins_str}",
-        f"frame-src 'self' {origins_str}",
+        f"default-src {extras_str} {origins_str}",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",
