@@ -38,6 +38,7 @@ def _add_missing_columns(conn) -> None:
     _ensure_column(conn, inspector, "sites", "ip_whitelist", "TEXT DEFAULT ''")
     _ensure_column(conn, inspector, "sites", "ip_blacklist", "TEXT DEFAULT ''")
     _ensure_column(conn, inspector, "post_rules", "allowed_actions", "TEXT")
+    _ensure_column(conn, inspector, "sites", "learned_csp_origins", "TEXT DEFAULT ''")
 
 
 def _ensure_column(conn, inspector, table: str, column: str, col_type: str) -> None:

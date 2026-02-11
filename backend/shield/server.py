@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 
 from config import settings
 from crawler.url_rewriter import URLRewriter
-from shield.security_headers import SecurityHeadersMiddleware
+from shield.security_headers import SecurityHeadersMiddleware, CspState
 
 logger = logging.getLogger("frontwall.shield.server")
 
@@ -84,6 +84,8 @@ def create_shield_app(
     csp: str | None = None,
     asset_learner=None,
     security_headers: bool = True,
+    csp_learner=None,
+    csp_state: CspState | None = None,
 ) -> FastAPI:
     """Create a hardened FastAPI app that serves cached static files."""
 
@@ -95,7 +97,19 @@ def create_shield_app(
     )
 
     if security_headers:
-        shield.add_middleware(SecurityHeadersMiddleware, csp=csp)
+        state = csp_state or CspState(csp=csp)
+        shield.add_middleware(SecurityHeadersMiddleware, csp_state=state)
+
+    @shield.post("/__csp_report")
+    async def csp_report(request: Request):
+        if not csp_learner or not csp_learner.enabled:
+            return Response(status_code=204)
+        try:
+            body = await request.json()
+            csp_learner.process_report(body)
+        except Exception:
+            pass
+        return Response(status_code=204)
 
     @shield.api_route("/{path:path}", methods=["GET", "HEAD"])
     async def serve_static(request: Request, path: str = ""):

@@ -7,14 +7,16 @@ logger = logging.getLogger("frontwall.shield.csp_builder")
 
 _URL_RE = re.compile(r'https?://[a-zA-Z0-9._-]+(?:\.[a-zA-Z]{2,})+')
 
+# Heuristic fallback for common domain clusters.  Enable learn mode on a
+# deployed shield for the browser to report the exact origins it needs —
+# those get persisted in the Site.learned_csp_origins column and merged
+# into the CSP automatically on the next deploy, replacing the need for
+# this table to be exhaustive.
 KNOWN_DOMAIN_GROUPS = {
     "fonts.googleapis.com": {"fonts.gstatic.com", "fonts.googleapis.com", "www.gstatic.com"},
     "fonts.gstatic.com": {"fonts.gstatic.com", "fonts.googleapis.com", "www.gstatic.com"},
-    "ajax.googleapis.com": {"ajax.googleapis.com"},
     "cdn.gtranslate.net": {"cdn.gtranslate.net", "translate.google.com", "translate.googleapis.com", "www.gstatic.com"},
     "translate.google.com": {"cdn.gtranslate.net", "translate.google.com", "translate.googleapis.com", "www.gstatic.com"},
-    "translate.googleapis.com": {"cdn.gtranslate.net", "translate.google.com", "translate.googleapis.com", "www.gstatic.com"},
-    "www.gstatic.com": {"www.gstatic.com", "translate.google.com", "translate.googleapis.com", "fonts.gstatic.com"},
     "maps.googleapis.com": {"maps.googleapis.com", "maps.gstatic.com", "maps.google.com"},
     "www.google-analytics.com": {"www.google-analytics.com", "www.googletagmanager.com", "analytics.google.com"},
     "www.googletagmanager.com": {"www.googletagmanager.com", "www.google-analytics.com", "analytics.google.com"},

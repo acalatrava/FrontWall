@@ -19,6 +19,8 @@ from shield.waf import WAFMiddleware
 from shield.rate_limiter import RateLimiter
 from shield.post_handler import PostHandler
 from shield.asset_learner import AssetLearner
+from shield.csp_learner import CspLearner
+from shield.security_headers import SecurityHeadersMiddleware, CspState
 from services.security_collector import collector as security_collector
 
 logger = logging.getLogger("frontwall.services.shield")
@@ -30,6 +32,8 @@ class ShieldInstance:
     task: asyncio.Task
     post_handler: PostHandler
     asset_learner: AssetLearner
+    csp_learner: CspLearner
+    sec_headers_mw: SecurityHeadersMiddleware | None
     port: int
 
 
@@ -109,14 +113,31 @@ async def deploy_shield(site_id: str) -> int:
         max_body_size = site.max_body_size
         ip_whitelist = _parse_ip_list(site.ip_whitelist)
         ip_blacklist = _parse_ip_list(site.ip_blacklist)
+        persisted_csp_origins = site.learned_csp_origins or ""
 
     for other_id, inst in _shields.items():
         if inst.port == port:
             raise ValueError(f"Port {port} is already in use by site {other_id}")
 
     scan_result = scan_cache_for_origins(cache_dir, target_url=target_url)
+
+    if persisted_csp_origins:
+        for origin in persisted_csp_origins.split(","):
+            origin = origin.strip()
+            if origin and origin not in scan_result["origins"]:
+                scan_result["origins"].append(origin)
+        scan_result["origins"].sort()
+
     csp = build_csp(scan_result)
-    logger.info("Built dynamic CSP with %d external origins for site %s", len(scan_result["origins"]), site_id)
+    logger.info("Built dynamic CSP with %d origins (%d learned) for site %s",
+                len(scan_result["origins"]),
+                len([o for o in persisted_csp_origins.split(",") if o.strip()]) if persisted_csp_origins else 0,
+                site_id)
+
+    csp_learner = CspLearner(site_id=site_id)
+    csp_learner.load_persisted(persisted_csp_origins)
+
+    csp_state = CspState(csp=csp)
 
     asset_learner = AssetLearner(
         site_id=site_id,
@@ -131,6 +152,8 @@ async def deploy_shield(site_id: str) -> int:
         csp=csp,
         asset_learner=asset_learner,
         security_headers=security_headers_enabled,
+        csp_learner=csp_learner,
+        csp_state=csp_state,
     )
 
     rate_limiter = RateLimiter(
@@ -181,13 +204,18 @@ async def deploy_shield(site_id: str) -> int:
 
     task = asyncio.create_task(_run())
 
+    csp_learner.start()
+
     _shields[site_id] = ShieldInstance(
         server=server,
         task=task,
         post_handler=post_handler,
         asset_learner=asset_learner,
+        csp_learner=csp_learner,
+        sec_headers_mw=None,
         port=port,
     )
+    _shields[site_id]._csp_state = csp_state
 
     async with async_session() as db:
         site = await db.get(Site, site_id)
@@ -204,6 +232,7 @@ async def undeploy_shield(site_id: str) -> bool:
     if instance is None:
         return False
 
+    instance.csp_learner.stop()
     instance.server.should_exit = True
     try:
         await asyncio.wait_for(instance.task, timeout=10)
@@ -233,6 +262,7 @@ def get_all_shields_status() -> list[dict]:
             "port": inst.port,
             "active": not inst.server.should_exit,
             "learn_mode": inst.post_handler.learn_mode,
+            "learned_csp_origins": len(inst.csp_learner.learned_origins),
         })
     return result
 
@@ -243,7 +273,11 @@ def set_learn_mode(site_id: str, enabled: bool) -> bool:
         return False
     inst.post_handler.learn_mode = enabled
     inst.asset_learner.enabled = enabled
-    logger.info("Learn mode %s for site %s", "enabled" if enabled else "disabled", site_id)
+    inst.csp_learner.enabled = enabled
+    csp_state = getattr(inst, "_csp_state", None)
+    if csp_state:
+        csp_state.learn_mode = enabled
+    logger.info("Learn mode %s for site %s (CSP report-only: %s)", "enabled" if enabled else "disabled", site_id, enabled)
     return True
 
 

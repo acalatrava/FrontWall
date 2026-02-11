@@ -26,22 +26,45 @@ IMMUTABLE_EXTENSIONS = {
 }
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Injects hardened security headers into every response."""
+class CspState:
+    """Shared mutable state for the CSP header, readable by the middleware."""
 
-    def __init__(self, app, csp: str | None = None, custom_headers: dict[str, str] | None = None):
+    def __init__(self, csp: str | None = None):
+        self.csp = csp
+        self.learn_mode = False
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Injects hardened security headers into every response.
+
+    When learn_mode is active on the shared CspState, the CSP is sent as
+    Content-Security-Policy-Report-Only with a report-uri so the browser
+    reports blocked domains instead of blocking them.
+    """
+
+    def __init__(self, app, csp_state: CspState | None = None, custom_headers: dict[str, str] | None = None):
         super().__init__(app)
-        self.headers = {**DEFAULT_HEADERS}
-        if csp:
-            self.headers["Content-Security-Policy"] = csp
+        self.base_headers = {**DEFAULT_HEADERS}
+        self.csp_state = csp_state or CspState()
         if custom_headers:
-            self.headers.update(custom_headers)
+            self.base_headers.update(custom_headers)
 
     async def dispatch(self, request: Request, call_next):
         response: Response = await call_next(request)
 
-        for key, value in self.headers.items():
+        for key, value in self.base_headers.items():
             response.headers[key] = value
+
+        csp = self.csp_state.csp
+        if csp:
+            if self.csp_state.learn_mode:
+                response.headers["Content-Security-Policy-Report-Only"] = csp + "; report-uri /__csp_report"
+                if "Content-Security-Policy" in response.headers:
+                    del response.headers["Content-Security-Policy"]
+            else:
+                response.headers["Content-Security-Policy"] = csp
+                if "Content-Security-Policy-Report-Only" in response.headers:
+                    del response.headers["Content-Security-Policy-Report-Only"]
 
         if "Server" in response.headers:
             del response.headers["Server"]
