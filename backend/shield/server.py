@@ -79,7 +79,12 @@ def _resolve_cache_file(cache_root: Path, path: str, query: str = "") -> Path:
     return cache_root / path / "index.html" if not path or path.endswith("/") else cache_root / path
 
 
-def create_shield_app(site_id: str | None = None, csp: str | None = None, asset_learner=None) -> FastAPI:
+def create_shield_app(
+    site_id: str | None = None,
+    csp: str | None = None,
+    asset_learner=None,
+    security_headers: bool = True,
+) -> FastAPI:
     """Create a hardened FastAPI app that serves cached static files."""
 
     shield = FastAPI(
@@ -89,7 +94,8 @@ def create_shield_app(site_id: str | None = None, csp: str | None = None, asset_
         openapi_url=None,
     )
 
-    shield.add_middleware(SecurityHeadersMiddleware, csp=csp)
+    if security_headers:
+        shield.add_middleware(SecurityHeadersMiddleware, csp=csp)
 
     @shield.api_route("/{path:path}", methods=["GET", "HEAD"])
     async def serve_static(request: Request, path: str = ""):

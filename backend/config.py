@@ -9,7 +9,6 @@ class Settings(BaseSettings):
 
     secret_key: str = ""
     admin_port: int = 8000
-    shield_port: int = 8080
     log_level: str = "info"
 
     data_dir: Path = Path("/app/data")
@@ -28,10 +27,6 @@ class Settings(BaseSettings):
     crawler_delay_seconds: float = 0.5
     crawler_timeout_seconds: int = 30
     crawler_max_pages: int = 10000
-
-    rate_limit_requests: int = 60
-    rate_limit_window_seconds: int = 60
-    max_request_size_bytes: int = 1_048_576
 
     model_config = {"env_prefix": "WS_"}
 

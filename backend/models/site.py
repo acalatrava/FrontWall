@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, Integer, Float, DateTime
+from sqlalchemy import String, Boolean, Integer, Float, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -26,6 +26,18 @@ class Site(Base):
     override_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     shield_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    shield_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    waf_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    rate_limit_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    rate_limit_requests: Mapped[int] = mapped_column(Integer, default=60)
+    rate_limit_window: Mapped[int] = mapped_column(Integer, default=60)
+    security_headers_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    block_bots: Mapped[bool] = mapped_column(Boolean, default=True)
+    block_suspicious_paths: Mapped[bool] = mapped_column(Boolean, default=True)
+    max_body_size: Mapped[int] = mapped_column(Integer, default=1_048_576)
+    ip_whitelist: Mapped[str] = mapped_column(Text, default="")
+    ip_blacklist: Mapped[str] = mapped_column(Text, default="")
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(

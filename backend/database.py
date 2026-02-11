@@ -25,6 +25,17 @@ def _add_missing_columns(conn) -> None:
     inspector = sa.inspect(conn)
     _ensure_column(conn, inspector, "sites", "internal_url", "VARCHAR(2048)")
     _ensure_column(conn, inspector, "sites", "override_host", "VARCHAR(255)")
+    _ensure_column(conn, inspector, "sites", "shield_port", "INTEGER")
+    _ensure_column(conn, inspector, "sites", "waf_enabled", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "sites", "rate_limit_enabled", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "sites", "rate_limit_requests", "INTEGER DEFAULT 60")
+    _ensure_column(conn, inspector, "sites", "rate_limit_window", "INTEGER DEFAULT 60")
+    _ensure_column(conn, inspector, "sites", "security_headers_enabled", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "sites", "block_bots", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "sites", "block_suspicious_paths", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "sites", "max_body_size", "INTEGER DEFAULT 1048576")
+    _ensure_column(conn, inspector, "sites", "ip_whitelist", "TEXT DEFAULT ''")
+    _ensure_column(conn, inspector, "sites", "ip_blacklist", "TEXT DEFAULT ''")
 
 
 def _ensure_column(conn, inspector, table: str, column: str, col_type: str) -> None:

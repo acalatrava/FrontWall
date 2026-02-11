@@ -23,6 +23,6 @@ RUN mkdir -p /app/data/cache
 ENV WS_DATA_DIR=/app/data
 ENV WS_LOG_LEVEL=info
 
-EXPOSE 8000 8080
+EXPOSE 8000 8080-8099
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

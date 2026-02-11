@@ -3,44 +3,53 @@ import { ref } from 'vue'
 import api from '../api'
 
 export const useShieldStore = defineStore('shield', () => {
-  const active = ref(false)
-  const port = ref(8080)
+  const shields = ref([])
   const loading = ref(false)
-  const learnMode = ref(false)
 
   async function fetchStatus() {
     const { data } = await api.get('/shield/status')
-    active.value = data.active
-    port.value = data.port
-    learnMode.value = data.learn_mode || false
+    shields.value = data.shields || []
   }
 
-  async function toggleLearnMode(enabled) {
-    const { data } = await api.post('/shield/learn-mode', null, { params: { enabled } })
-    learnMode.value = data.learn_mode
+  async function fetchSiteStatus(siteId) {
+    const { data } = await api.get(`/shield/status/${siteId}`)
+    return data
   }
 
   async function deploy(siteId) {
     loading.value = true
     try {
       const { data } = await api.post(`/shield/deploy/${siteId}`)
-      active.value = true
-      port.value = data.port
+      await fetchStatus()
       return data
     } finally {
       loading.value = false
     }
   }
 
-  async function undeploy() {
+  async function undeploy(siteId) {
     loading.value = true
     try {
-      await api.post('/shield/undeploy')
-      active.value = false
+      await api.post(`/shield/undeploy/${siteId}`)
+      await fetchStatus()
     } finally {
       loading.value = false
     }
   }
 
-  return { active, port, loading, learnMode, fetchStatus, deploy, undeploy, toggleLearnMode }
+  async function toggleLearnMode(siteId, enabled) {
+    const { data } = await api.post(`/shield/learn-mode/${siteId}`, null, { params: { enabled } })
+    await fetchStatus()
+    return data
+  }
+
+  function isActive(siteId) {
+    return shields.value.some(s => s.site_id === siteId && s.active)
+  }
+
+  function getShield(siteId) {
+    return shields.value.find(s => s.site_id === siteId)
+  }
+
+  return { shields, loading, fetchStatus, fetchSiteStatus, deploy, undeploy, toggleLearnMode, isActive, getShield }
 })

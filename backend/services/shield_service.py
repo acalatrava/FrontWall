@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import uvicorn
@@ -21,10 +22,17 @@ from shield.asset_learner import AssetLearner
 
 logger = logging.getLogger("frontwall.services.shield")
 
-_shield_server: uvicorn.Server | None = None
-_shield_task: asyncio.Task | None = None
-_post_handler: PostHandler | None = None
-_asset_learner: AssetLearner | None = None
+
+@dataclass
+class ShieldInstance:
+    server: uvicorn.Server
+    task: asyncio.Task
+    post_handler: PostHandler
+    asset_learner: AssetLearner
+    port: int
+
+
+_shields: dict[str, ShieldInstance] = {}
 
 
 async def _load_post_rules(site_id: str) -> list[dict]:
@@ -63,11 +71,15 @@ async def _load_post_rules(site_id: str) -> list[dict]:
         return rule_dicts
 
 
-async def deploy_shield(site_id: str) -> bool:
-    global _shield_server, _shield_task, _post_handler, _asset_learner
+def _parse_ip_list(raw: str) -> set[str]:
+    if not raw or not raw.strip():
+        return set()
+    return {ip.strip() for ip in raw.split(",") if ip.strip()}
 
-    if _shield_server is not None:
-        await undeploy_shield()
+
+async def deploy_shield(site_id: str) -> int:
+    if site_id in _shields:
+        await undeploy_shield(site_id)
 
     cache_dir = Path(settings.cache_dir) / site_id
     if not cache_dir.exists():
@@ -75,64 +87,102 @@ async def deploy_shield(site_id: str) -> bool:
 
     async with async_session() as db:
         site = await db.get(Site, site_id)
-        target_url = site.target_url if site else None
+        if not site:
+            raise ValueError(f"Site {site_id} not found")
+        if not site.shield_port:
+            raise ValueError("Shield port must be configured before deploying")
 
-    internal_url = site.internal_url if site else None
-    override_host = site.override_host if site else None
+        target_url = site.target_url
+        internal_url = site.internal_url
+        override_host = site.override_host
+        port = site.shield_port
+
+        waf_enabled = site.waf_enabled
+        rate_limit_enabled = site.rate_limit_enabled
+        rl_requests = site.rate_limit_requests
+        rl_window = site.rate_limit_window
+        security_headers_enabled = site.security_headers_enabled
+        block_bots = site.block_bots
+        block_suspicious_paths = site.block_suspicious_paths
+        max_body_size = site.max_body_size
+        ip_whitelist = _parse_ip_list(site.ip_whitelist)
+        ip_blacklist = _parse_ip_list(site.ip_blacklist)
+
+    for other_id, inst in _shields.items():
+        if inst.port == port:
+            raise ValueError(f"Port {port} is already in use by site {other_id}")
 
     scan_result = scan_cache_for_origins(cache_dir, target_url=target_url)
     csp = build_csp(scan_result)
-    logger.info("Built dynamic CSP with %d external origins", len(scan_result["origins"]))
+    logger.info("Built dynamic CSP with %d external origins for site %s", len(scan_result["origins"]), site_id)
 
-    _asset_learner = AssetLearner(
+    asset_learner = AssetLearner(
         site_id=site_id,
-        target_url=target_url or "",
+        target_url=target_url,
         cache_dir=cache_dir,
         internal_url=internal_url,
         override_host=override_host,
     )
 
-    shield_app = create_shield_app(site_id, csp=csp, asset_learner=_asset_learner)
-
-    rate_limiter = RateLimiter(
-        global_requests=settings.rate_limit_requests,
-        global_window=settings.rate_limit_window_seconds,
+    shield_app = create_shield_app(
+        site_id,
+        csp=csp,
+        asset_learner=asset_learner,
+        security_headers=security_headers_enabled,
     )
 
+    rate_limiter = RateLimiter(
+        global_requests=rl_requests,
+        global_window=rl_window,
+    ) if rate_limit_enabled else None
+
     post_rules = await _load_post_rules(site_id)
-    _post_handler = PostHandler(
-        rate_limiter,
+    post_handler = PostHandler(
+        rate_limiter or RateLimiter(),
         site_id=site_id,
-        target_url=target_url or "",
+        target_url=target_url,
         internal_url=internal_url,
         override_host=override_host,
     )
-    _post_handler.load_rules(post_rules)
+    post_handler.load_rules(post_rules)
 
     @shield_app.api_route("/{path:path}", methods=["POST"])
     async def handle_post(request: Request, path: str = ""):
-        return await _post_handler.handle_post(request)
+        return await post_handler.handle_post(request)
 
-    shield_app.add_middleware(
-        WAFMiddleware,
-        rate_limiter=rate_limiter,
-        max_body_size=settings.max_request_size_bytes,
-        post_handler=_post_handler,
-    )
+    if waf_enabled:
+        shield_app.add_middleware(
+            WAFMiddleware,
+            rate_limiter=rate_limiter,
+            max_body_size=max_body_size,
+            ip_whitelist=ip_whitelist,
+            ip_blacklist=ip_blacklist,
+            post_handler=post_handler,
+            block_bots=block_bots,
+            block_suspicious_paths=block_suspicious_paths,
+        )
 
     config = uvicorn.Config(
         shield_app,
         host="0.0.0.0",
-        port=settings.shield_port,
+        port=port,
         log_level=settings.log_level,
         access_log=True,
     )
-    _shield_server = uvicorn.Server(config)
+    server = uvicorn.Server(config)
 
     async def _run():
-        await _shield_server.serve()
+        await server.serve()
 
-    _shield_task = asyncio.create_task(_run())
+    task = asyncio.create_task(_run())
+
+    _shields[site_id] = ShieldInstance(
+        server=server,
+        task=task,
+        post_handler=post_handler,
+        asset_learner=asset_learner,
+        port=port,
+    )
 
     async with async_session() as db:
         site = await db.get(Site, site_id)
@@ -140,87 +190,106 @@ async def deploy_shield(site_id: str) -> bool:
             site.shield_active = True
             await db.commit()
 
-    logger.info("Shield deployed for site %s on port %d", site_id, settings.shield_port)
-    return True
+    logger.info("Shield deployed for site %s on port %d", site_id, port)
+    return port
 
 
-async def undeploy_shield() -> bool:
-    global _shield_server, _shield_task, _post_handler, _asset_learner
-
-    if _shield_server is None:
+async def undeploy_shield(site_id: str) -> bool:
+    instance = _shields.pop(site_id, None)
+    if instance is None:
         return False
 
-    _shield_server.should_exit = True
-    if _shield_task:
-        try:
-            await asyncio.wait_for(_shield_task, timeout=10)
-        except asyncio.TimeoutError:
-            _shield_task.cancel()
+    instance.server.should_exit = True
+    try:
+        await asyncio.wait_for(instance.task, timeout=10)
+    except asyncio.TimeoutError:
+        instance.task.cancel()
 
     async with async_session() as db:
-        result = await db.execute(select(Site).where(Site.shield_active == True))
-        for site in result.scalars():
+        site = await db.get(Site, site_id)
+        if site:
             site.shield_active = False
-        await db.commit()
+            await db.commit()
 
-    _shield_server = None
-    _shield_task = None
-    _post_handler = None
-    _asset_learner = None
-
-    logger.info("Shield undeployed")
+    logger.info("Shield undeployed for site %s", site_id)
     return True
 
 
-def is_shield_active() -> bool:
-    return _shield_server is not None and not _shield_server.should_exit
+def is_shield_active(site_id: str) -> bool:
+    inst = _shields.get(site_id)
+    return inst is not None and not inst.server.should_exit
 
 
-def set_learn_mode(enabled: bool) -> bool:
-    if _post_handler is None:
+def get_all_shields_status() -> list[dict]:
+    result = []
+    for sid, inst in _shields.items():
+        result.append({
+            "site_id": sid,
+            "port": inst.port,
+            "active": not inst.server.should_exit,
+            "learn_mode": inst.post_handler.learn_mode,
+        })
+    return result
+
+
+def set_learn_mode(site_id: str, enabled: bool) -> bool:
+    inst = _shields.get(site_id)
+    if inst is None:
         return False
-    _post_handler.learn_mode = enabled
-    if _asset_learner is not None:
-        _asset_learner.enabled = enabled
-    logger.info("Learn mode %s", "enabled" if enabled else "disabled")
+    inst.post_handler.learn_mode = enabled
+    inst.asset_learner.enabled = enabled
+    logger.info("Learn mode %s for site %s", "enabled" if enabled else "disabled", site_id)
     return True
 
 
-def is_learn_mode() -> bool:
-    if _post_handler is None:
+def is_learn_mode(site_id: str) -> bool:
+    inst = _shields.get(site_id)
+    if inst is None:
         return False
-    return _post_handler.learn_mode
+    return inst.post_handler.learn_mode
 
 
-def get_learned_posts() -> list[dict]:
-    if _post_handler is None:
+def get_learned_posts(site_id: str) -> list[dict]:
+    inst = _shields.get(site_id)
+    if inst is None:
         return []
-    return list(_post_handler.learned_posts)
+    return list(inst.post_handler.learned_posts)
 
 
-def get_learned_assets() -> list[dict]:
-    if _asset_learner is None:
+def get_learned_assets(site_id: str) -> list[dict]:
+    inst = _shields.get(site_id)
+    if inst is None:
         return []
-    return list(_asset_learner.learned_assets)
+    return list(inst.asset_learner.learned_assets)
 
 
 async def auto_deploy_if_needed() -> None:
-    """Check if any site had shield_active=True and re-deploy it on startup."""
     async with async_session() as db:
         result = await db.execute(select(Site).where(Site.shield_active == True))
-        site = result.scalar_one_or_none()
-        if not site:
-            return
+        sites = result.scalars().all()
 
+    for site in sites:
         cache_dir = Path(settings.cache_dir) / site.id
         if not cache_dir.exists():
-            logger.warning("Site %s was marked as shielded but has no cache. Skipping auto-deploy.", site.id)
-            site.shield_active = False
-            await db.commit()
-            return
+            logger.warning("Site %s was marked as shielded but has no cache. Skipping.", site.id)
+            async with async_session() as db:
+                s = await db.get(Site, site.id)
+                if s:
+                    s.shield_active = False
+                    await db.commit()
+            continue
 
-    try:
-        await deploy_shield(site.id)
-        logger.info("Auto-deployed shield for site %s on startup", site.id)
-    except Exception as exc:
-        logger.error("Failed to auto-deploy shield for site %s: %s", site.id, exc)
+        if not site.shield_port:
+            logger.warning("Site %s has no shield_port configured. Skipping auto-deploy.", site.id)
+            async with async_session() as db:
+                s = await db.get(Site, site.id)
+                if s:
+                    s.shield_active = False
+                    await db.commit()
+            continue
+
+        try:
+            await deploy_shield(site.id)
+            logger.info("Auto-deployed shield for site %s on port %d", site.id, site.shield_port)
+        except Exception as exc:
+            logger.error("Failed to auto-deploy shield for site %s: %s", site.id, exc)

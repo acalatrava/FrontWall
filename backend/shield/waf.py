@@ -60,6 +60,8 @@ class WAFMiddleware(BaseHTTPMiddleware):
         ip_whitelist: set[str] | None = None,
         ip_blacklist: set[str] | None = None,
         post_handler=None,
+        block_bots: bool = True,
+        block_suspicious_paths: bool = True,
     ):
         super().__init__(app)
         self.rate_limiter = rate_limiter or RateLimiter()
@@ -67,6 +69,8 @@ class WAFMiddleware(BaseHTTPMiddleware):
         self.ip_whitelist = ip_whitelist or set()
         self.ip_blacklist = ip_blacklist or set()
         self.post_handler = post_handler
+        self.block_bots = block_bots
+        self.block_suspicious_paths = block_suspicious_paths
 
     async def dispatch(self, request: Request, call_next):
         client_ip = self._get_client_ip(request)
@@ -79,18 +83,19 @@ class WAFMiddleware(BaseHTTPMiddleware):
             pass
 
         user_agent = request.headers.get("user-agent", "")
-        if self._is_malicious_bot(user_agent):
+        if self.block_bots and self._is_malicious_bot(user_agent):
             logger.warning("Blocked malicious bot: %s (IP: %s)", user_agent, client_ip)
             return BLOCKED_RESPONSE
 
         path = request.url.path
 
         is_static = any(path.lower().endswith(ext) for ext in STATIC_ASSET_EXTENSIONS)
-        if not is_static:
+        if not is_static and self.rate_limiter:
             if not await self.rate_limiter.check_global(client_ip):
                 logger.warning("Rate limit exceeded for IP: %s", client_ip)
                 return RATE_LIMITED_RESPONSE
-        if self._is_suspicious_path(path):
+
+        if self.block_suspicious_paths and self._is_suspicious_path(path):
             post_allowed = (
                 request.method == "POST"
                 and self.post_handler
@@ -104,7 +109,7 @@ class WAFMiddleware(BaseHTTPMiddleware):
                 return BLOCKED_RESPONSE
 
         query = str(request.url.query)
-        if query and self._is_suspicious_path(query):
+        if self.block_suspicious_paths and query and self._is_suspicious_path(query):
             logger.warning("Blocked suspicious query: %s (IP: %s)", query, client_ip)
             return BLOCKED_RESPONSE
 

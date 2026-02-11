@@ -77,7 +77,6 @@ app = FastAPI(
 _cors_origins = [
     f"http://localhost:{settings.admin_port}",
     f"http://127.0.0.1:{settings.admin_port}",
-    f"http://localhost:{settings.shield_port}",
 ]
 
 app.add_middleware(

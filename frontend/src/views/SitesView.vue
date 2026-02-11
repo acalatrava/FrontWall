@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-white">Sites</h1>
       <button
-        @click="showModal = true"
+        @click="openCreateModal"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
       >
         + Add Site
@@ -15,7 +15,7 @@
     <div v-else-if="sites.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
       <p class="text-gray-400 mb-4">No sites configured. Add your first WordPress site to protect.</p>
       <button
-        @click="showModal = true"
+        @click="openCreateModal"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
       >
         Add Site
@@ -40,9 +40,21 @@
               <span>Concurrency: {{ site.crawl_concurrency }}</span>
               <span>Max pages: {{ site.crawl_max_pages }}</span>
               <span>Delay: {{ site.crawl_delay }}s</span>
+              <span v-if="site.shield_port" class="text-blue-400">Port: {{ site.shield_port }}</span>
+            </div>
+            <div class="flex gap-3 mt-2">
+              <span class="text-xs px-2 py-0.5 rounded" :class="site.waf_enabled ? 'bg-green-500/10 text-green-400' : 'bg-gray-800 text-gray-500'">WAF</span>
+              <span class="text-xs px-2 py-0.5 rounded" :class="site.rate_limit_enabled ? 'bg-green-500/10 text-green-400' : 'bg-gray-800 text-gray-500'">Rate Limit</span>
+              <span class="text-xs px-2 py-0.5 rounded" :class="site.security_headers_enabled ? 'bg-green-500/10 text-green-400' : 'bg-gray-800 text-gray-500'">Headers</span>
             </div>
           </div>
           <div class="flex items-center gap-2">
+            <button
+              @click="openEditModal(site)"
+              class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded-lg transition-colors"
+            >
+              Edit
+            </button>
             <router-link
               :to="`/crawler/${site.id}`"
               class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded-lg transition-colors"
@@ -73,9 +85,9 @@
     </div>
 
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-lg p-6 mx-4">
-        <h2 class="text-xl font-bold text-white mb-4">Add New Site</h2>
-        <form @submit.prevent="handleCreate" class="space-y-4">
+      <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-2xl p-6 mx-4 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold text-white mb-4">{{ editingSiteId ? 'Edit Site' : 'Add New Site' }}</h2>
+        <form @submit.prevent="handleSubmit" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1">Site Name</label>
             <input v-model="form.name" required class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="My WordPress Site" />
@@ -84,6 +96,13 @@
             <label class="block text-sm font-medium text-gray-300 mb-1">Target URL</label>
             <input v-model="form.target_url" required type="url" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://mysite.com" />
           </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Shield Port</label>
+            <input v-model.number="form.shield_port" type="number" min="1024" max="65535" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="8080" />
+            <p class="text-xs text-gray-500 mt-1">Port where this site's shield will listen (1024-65535, unique per site)</p>
+          </div>
+
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">Concurrency</label>
@@ -102,6 +121,7 @@
             <input v-model="form.respect_robots_txt" type="checkbox" id="robots" class="rounded bg-gray-800 border-gray-700" />
             <label for="robots" class="text-sm text-gray-300">Respect robots.txt</label>
           </div>
+
           <div>
             <button
               type="button"
@@ -127,11 +147,80 @@
               </div>
             </div>
           </div>
+
+          <div>
+            <button
+              type="button"
+              @click="showSecurity = !showSecurity"
+              class="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+            >
+              <svg class="w-4 h-4 transition-transform" :class="showSecurity ? 'rotate-90' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              Security Settings
+            </button>
+            <div v-if="showSecurity" class="mt-3 space-y-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+              <div class="grid grid-cols-2 gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input v-model="form.waf_enabled" type="checkbox" class="rounded bg-gray-800 border-gray-700" />
+                  <span class="text-sm text-gray-300">WAF Enabled</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input v-model="form.security_headers_enabled" type="checkbox" class="rounded bg-gray-800 border-gray-700" />
+                  <span class="text-sm text-gray-300">Security Headers</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input v-model="form.block_bots" type="checkbox" class="rounded bg-gray-800 border-gray-700" />
+                  <span class="text-sm text-gray-300">Block Malicious Bots</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input v-model="form.block_suspicious_paths" type="checkbox" class="rounded bg-gray-800 border-gray-700" />
+                  <span class="text-sm text-gray-300">Block Suspicious Paths</span>
+                </label>
+              </div>
+
+              <div>
+                <label class="flex items-center gap-2 cursor-pointer mb-2">
+                  <input v-model="form.rate_limit_enabled" type="checkbox" class="rounded bg-gray-800 border-gray-700" />
+                  <span class="text-sm text-gray-300">Rate Limiting</span>
+                </label>
+                <div v-if="form.rate_limit_enabled" class="grid grid-cols-2 gap-3 ml-6">
+                  <div>
+                    <label class="block text-xs text-gray-400 mb-1">Requests</label>
+                    <input v-model.number="form.rate_limit_requests" type="number" min="1" max="10000" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-400 mb-1">Window (seconds)</label>
+                    <input v-model.number="form.rate_limit_window" type="number" min="1" max="3600" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Max Request Body Size</label>
+                <div class="flex items-center gap-2">
+                  <input v-model.number="bodySizeKB" type="number" min="1" class="w-32 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <span class="text-sm text-gray-400">KB</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">IP Whitelist</label>
+                <input v-model="form.ip_whitelist" type="text" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="1.2.3.4, 5.6.7.8" />
+                <p class="text-xs text-gray-500 mt-1">Comma-separated IPs. Leave empty to allow all.</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">IP Blacklist</label>
+                <input v-model="form.ip_blacklist" type="text" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="10.0.0.1, 10.0.0.2" />
+                <p class="text-xs text-gray-500 mt-1">Comma-separated IPs to block.</p>
+              </div>
+            </div>
+          </div>
+
           <div v-if="formError" class="text-sm text-red-400">{{ formError }}</div>
           <div class="flex justify-end gap-3 pt-2">
-            <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">Cancel</button>
-            <button type="submit" :disabled="creating" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {{ creating ? 'Creating...' : 'Create Site' }}
+            <button type="button" @click="closeModal" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">Cancel</button>
+            <button type="submit" :disabled="submitting" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
+              {{ submitting ? (editingSiteId ? 'Saving...' : 'Creating...') : (editingSiteId ? 'Save Changes' : 'Create Site') }}
             </button>
           </div>
         </form>
@@ -141,7 +230,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSitesStore } from '../stores/sites'
 
@@ -149,10 +238,12 @@ const store = useSitesStore()
 const { sites, loading } = storeToRefs(store)
 const showModal = ref(false)
 const showAdvanced = ref(false)
-const creating = ref(false)
+const showSecurity = ref(false)
+const submitting = ref(false)
 const formError = ref('')
+const editingSiteId = ref(null)
 
-const form = reactive({
+const defaultForm = {
   name: '',
   target_url: '',
   crawl_concurrency: 5,
@@ -161,25 +252,99 @@ const form = reactive({
   respect_robots_txt: true,
   internal_url: '',
   override_host: '',
+  shield_port: null,
+  waf_enabled: true,
+  rate_limit_enabled: true,
+  rate_limit_requests: 60,
+  rate_limit_window: 60,
+  security_headers_enabled: true,
+  block_bots: true,
+  block_suspicious_paths: true,
+  max_body_size: 1048576,
+  ip_whitelist: '',
+  ip_blacklist: '',
+}
+
+const form = reactive({ ...defaultForm })
+
+const bodySizeKB = computed({
+  get: () => Math.round(form.max_body_size / 1024),
+  set: (v) => { form.max_body_size = v * 1024 },
 })
 
 onMounted(() => store.fetchSites())
 
-async function handleCreate() {
+function openCreateModal() {
+  editingSiteId.value = null
+  Object.assign(form, { ...defaultForm })
+  showAdvanced.value = false
+  showSecurity.value = false
   formError.value = ''
-  creating.value = true
+  showModal.value = true
+}
+
+function openEditModal(site) {
+  editingSiteId.value = site.id
+  Object.assign(form, {
+    name: site.name,
+    target_url: site.target_url,
+    crawl_concurrency: site.crawl_concurrency,
+    crawl_delay: site.crawl_delay,
+    crawl_max_pages: site.crawl_max_pages,
+    respect_robots_txt: site.respect_robots_txt,
+    internal_url: site.internal_url || '',
+    override_host: site.override_host || '',
+    shield_port: site.shield_port,
+    waf_enabled: site.waf_enabled,
+    rate_limit_enabled: site.rate_limit_enabled,
+    rate_limit_requests: site.rate_limit_requests,
+    rate_limit_window: site.rate_limit_window,
+    security_headers_enabled: site.security_headers_enabled,
+    block_bots: site.block_bots,
+    block_suspicious_paths: site.block_suspicious_paths,
+    max_body_size: site.max_body_size,
+    ip_whitelist: site.ip_whitelist || '',
+    ip_blacklist: site.ip_blacklist || '',
+  })
+  showAdvanced.value = !!(site.internal_url || site.override_host)
+  showSecurity.value = false
+  formError.value = ''
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+  editingSiteId.value = null
+}
+
+function buildPayload() {
+  const payload = { ...form }
+  if (!payload.internal_url) payload.internal_url = null
+  if (!payload.override_host) payload.override_host = null
+  if (!payload.shield_port) payload.shield_port = null
+  return payload
+}
+
+async function handleSubmit() {
+  formError.value = ''
+  submitting.value = true
   try {
-    const payload = { ...form }
-    if (!payload.internal_url) payload.internal_url = null
-    if (!payload.override_host) payload.override_host = null
-    await store.createSite(payload)
-    showModal.value = false
-    showAdvanced.value = false
-    Object.assign(form, { name: '', target_url: '', crawl_concurrency: 5, crawl_delay: 0.5, crawl_max_pages: 10000, respect_robots_txt: true, internal_url: '', override_host: '' })
+    const payload = buildPayload()
+    if (editingSiteId.value) {
+      await store.updateSite(editingSiteId.value, payload)
+    } else {
+      await store.createSite(payload)
+    }
+    closeModal()
   } catch (e) {
-    formError.value = e.response?.data?.detail || 'Failed to create site'
+    const detail = e.response?.data?.detail
+    if (Array.isArray(detail)) {
+      formError.value = detail.map(d => d.msg?.replace('Value error, ', '') || d.msg).join('. ')
+    } else {
+      formError.value = detail || 'Operation failed'
+    }
   } finally {
-    creating.value = false
+    submitting.value = false
   }
 }
 

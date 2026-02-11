@@ -44,6 +44,17 @@ class SiteCreate(BaseModel):
     auth_password: str | None = None
     internal_url: str | None = None
     override_host: str | None = None
+    shield_port: int | None = None
+    waf_enabled: bool = True
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 60
+    rate_limit_window: int = 60
+    security_headers_enabled: bool = True
+    block_bots: bool = True
+    block_suspicious_paths: bool = True
+    max_body_size: int = 1_048_576
+    ip_whitelist: str = ""
+    ip_blacklist: str = ""
 
     @field_validator("name")
     @classmethod
@@ -102,6 +113,38 @@ class SiteCreate(BaseModel):
             return v
         return None
 
+    @field_validator("shield_port")
+    @classmethod
+    def validate_shield_port(cls, v: int | None) -> int | None:
+        if v is not None:
+            from config import settings
+            if v < 1024 or v > 65535:
+                raise ValueError("Shield port must be between 1024 and 65535")
+            if v == settings.admin_port:
+                raise ValueError("Shield port must not be the same as the admin port")
+        return v
+
+    @field_validator("rate_limit_requests")
+    @classmethod
+    def validate_rate_limit_requests(cls, v: int) -> int:
+        if v < 1 or v > 10000:
+            raise ValueError("Rate limit requests must be between 1 and 10,000")
+        return v
+
+    @field_validator("rate_limit_window")
+    @classmethod
+    def validate_rate_limit_window(cls, v: int) -> int:
+        if v < 1 or v > 3600:
+            raise ValueError("Rate limit window must be between 1 and 3600 seconds")
+        return v
+
+    @field_validator("max_body_size")
+    @classmethod
+    def validate_max_body_size(cls, v: int) -> int:
+        if v < 1024 or v > 104_857_600:
+            raise ValueError("Max body size must be between 1KB and 100MB")
+        return v
+
 
 class SiteUpdate(BaseModel):
     name: str | None = None
@@ -115,6 +158,17 @@ class SiteUpdate(BaseModel):
     auth_password: str | None = None
     internal_url: str | None = None
     override_host: str | None = None
+    shield_port: int | None = None
+    waf_enabled: bool | None = None
+    rate_limit_enabled: bool | None = None
+    rate_limit_requests: int | None = None
+    rate_limit_window: int | None = None
+    security_headers_enabled: bool | None = None
+    block_bots: bool | None = None
+    block_suspicious_paths: bool | None = None
+    max_body_size: int | None = None
+    ip_whitelist: str | None = None
+    ip_blacklist: str | None = None
 
     @field_validator("target_url")
     @classmethod
@@ -144,6 +198,17 @@ class SiteUpdate(BaseModel):
             return v
         return None
 
+    @field_validator("shield_port")
+    @classmethod
+    def validate_shield_port(cls, v: int | None) -> int | None:
+        if v is not None:
+            from config import settings
+            if v < 1024 or v > 65535:
+                raise ValueError("Shield port must be between 1024 and 65535")
+            if v == settings.admin_port:
+                raise ValueError("Shield port must not be the same as the admin port")
+        return v
+
 
 class SiteResponse(BaseModel):
     id: str
@@ -158,6 +223,17 @@ class SiteResponse(BaseModel):
     internal_url: str | None
     override_host: str | None
     shield_active: bool
+    shield_port: int | None
+    waf_enabled: bool
+    rate_limit_enabled: bool
+    rate_limit_requests: int
+    rate_limit_window: int
+    security_headers_enabled: bool
+    block_bots: bool
+    block_suspicious_paths: bool
+    max_body_size: int
+    ip_whitelist: str
+    ip_blacklist: str
     created_at: datetime
     updated_at: datetime
 
