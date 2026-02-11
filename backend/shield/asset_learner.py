@@ -10,7 +10,7 @@ import httpx
 from config import settings
 from crawler.url_rewriter import URLRewriter
 
-logger = logging.getLogger("webshield.shield.asset_learner")
+logger = logging.getLogger("frontwall.shield.asset_learner")
 
 
 class AssetLearner:
@@ -60,7 +60,7 @@ class AssetLearner:
             fetch_url += f"?{query}"
 
         headers = {
-            "User-Agent": "WebShield AssetLearner/1.0",
+            "User-Agent": "FrontWall AssetLearner/1.0",
             "Accept": "*/*",
         }
         if self.internal_url:

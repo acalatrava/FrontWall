@@ -5,7 +5,7 @@ import unicodedata
 
 import bleach
 
-logger = logging.getLogger("webshield.shield.sanitizer")
+logger = logging.getLogger("frontwall.shield.sanitizer")
 
 SQL_INJECTION_PATTERNS = [
     re.compile(r"(\b(union|select|insert|update|delete|drop|alter|create|exec|execute)\b.*\b(from|into|table|database|where)\b)", re.IGNORECASE),

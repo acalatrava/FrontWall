@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "Web Shield"
+    app_name: str = "FrontWall"
     app_version: str = "0.1.0"
 
     secret_key: str = ""
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     data_dir: Path = Path("/app/data")
     cache_dir: Path = Path("/app/data/cache")
-    db_url: str = "sqlite+aiosqlite:///app/data/webshield.db"
+    db_url: str = "sqlite+aiosqlite:///app/data/frontwall.db"
 
     jwt_algorithm: str = "HS256"
     jwt_access_expire_minutes: int = 15
@@ -47,7 +47,7 @@ def get_settings() -> Settings:
     data_path = Path(data_dir)
     defaults["data_dir"] = data_path
     defaults["cache_dir"] = data_path / "cache"
-    defaults["db_url"] = f"sqlite+aiosqlite:///{data_path / 'webshield.db'}"
+    defaults["db_url"] = f"sqlite+aiosqlite:///{data_path / 'frontwall.db'}"
 
     instance = Settings(**defaults)
 

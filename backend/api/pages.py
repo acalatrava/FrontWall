@@ -19,7 +19,7 @@ from crawler.form_detector import detect_forms
 from crawler.engine import CrawlerEngine
 from database import async_session
 
-logger = logging.getLogger("webshield.api.pages")
+logger = logging.getLogger("frontwall.api.pages")
 
 router = APIRouter(prefix="/api/pages", tags=["pages"])
 
@@ -71,7 +71,7 @@ async def add_manual_page(data: PageCreate, db: AsyncSession = Depends(get_db)):
         auth = httpx.BasicAuth(site.auth_user, site.auth_password)
 
     headers = {
-        "User-Agent": "WebShield Crawler/1.0 (+https://github.com/acalatrava/webshield)",
+        "User-Agent": "FrontWall Crawler/1.0 (+https://github.com/acalatrava/frontwall)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     if site.internal_url:
@@ -201,7 +201,7 @@ def _launch_spider(site_id: str, start_url: str, site, cache_dir: Path) -> None:
 
     async def _run():
         headers = {
-            "User-Agent": "WebShield Crawler/1.0 (+https://github.com/webshield)",
+            "User-Agent": "FrontWall Crawler/1.0 (+https://github.com/frontwall)",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
         if site.internal_url:

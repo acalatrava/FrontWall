@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-logger = logging.getLogger("webshield.shield.rate_limiter")
+logger = logging.getLogger("frontwall.shield.rate_limiter")
 
 
 @dataclass

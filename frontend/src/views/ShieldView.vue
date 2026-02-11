@@ -81,7 +81,7 @@
         <div class="flex items-center gap-3">
           <span class="text-gray-400 w-32">Proxy Config:</span>
           <code class="bg-gray-800 px-3 py-1 rounded text-green-400 text-xs">
-            proxy_pass http://webshield:{{ shieldStore.port }};
+            proxy_pass http://frontwall:{{ shieldStore.port }};
           </code>
         </div>
       </div>

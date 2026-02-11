@@ -6,7 +6,7 @@ from starlette.responses import Response
 
 from shield.rate_limiter import RateLimiter
 
-logger = logging.getLogger("webshield.shield.waf")
+logger = logging.getLogger("frontwall.shield.waf")
 
 MALICIOUS_BOT_PATTERNS = [
     re.compile(r"sqlmap", re.IGNORECASE),

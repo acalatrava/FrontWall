@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse, Resp
 from shield.sanitizer import InputSanitizer
 from shield.rate_limiter import RateLimiter
 
-logger = logging.getLogger("webshield.shield.post_handler")
+logger = logging.getLogger("frontwall.shield.post_handler")
 
 
 class PostHandler:
@@ -47,7 +47,7 @@ class PostHandler:
             "Content-Type": content_type,
             "X-Forwarded-For": client_ip,
             "X-Forwarded-Proto": request.url.scheme,
-            "User-Agent": request.headers.get("user-agent", "WebShield/1.0"),
+            "User-Agent": request.headers.get("user-agent", "FrontWall/1.0"),
         }
         if self.internal_url and self.override_host:
             fwd_headers["Host"] = self.override_host
@@ -247,7 +247,8 @@ class PostHandler:
                     "honeypot_field": None,
                     "enable_csrf": False,
                     "fields": [
-                        {"field_name": f, "field_type": "text", "required": False, "max_length": 5000, "validation_regex": None}
+                        {"field_name": f, "field_type": "text", "required": False,
+                            "max_length": 5000, "validation_regex": None}
                         for f in field_names
                     ],
                 })

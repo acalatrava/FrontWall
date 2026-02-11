@@ -4,7 +4,7 @@ from xml.etree import ElementTree
 
 import httpx
 
-logger = logging.getLogger("webshield.crawler.sitemap")
+logger = logging.getLogger("frontwall.crawler.sitemap")
 
 SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 

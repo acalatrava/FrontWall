@@ -10,7 +10,7 @@ from config import settings
 from crawler.url_rewriter import URLRewriter
 from shield.security_headers import SecurityHeadersMiddleware
 
-logger = logging.getLogger("webshield.shield.server")
+logger = logging.getLogger("frontwall.shield.server")
 
 BLOCKED_EXTENSIONS = {
     ".php", ".asp", ".aspx", ".jsp", ".cgi", ".pl", ".py", ".rb",
@@ -83,7 +83,7 @@ def create_shield_app(site_id: str | None = None, csp: str | None = None, asset_
     """Create a hardened FastAPI app that serves cached static files."""
 
     shield = FastAPI(
-        title="Web Shield",
+        title="FrontWall",
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
@@ -97,12 +97,14 @@ def create_shield_app(site_id: str | None = None, csp: str | None = None, asset_
             return GENERIC_400
 
         if not _is_path_safe(path):
-            logger.warning("Path traversal attempt blocked: %s (IP: %s)", path, request.client.host if request.client else "unknown")
+            logger.warning("Path traversal attempt blocked: %s (IP: %s)", path,
+                           request.client.host if request.client else "unknown")
             return GENERIC_403
 
         ext = Path(path).suffix.lower()
         if ext in BLOCKED_EXTENSIONS:
-            logger.warning("Blocked extension access: %s (IP: %s)", path, request.client.host if request.client else "unknown")
+            logger.warning("Blocked extension access: %s (IP: %s)", path,
+                           request.client.host if request.client else "unknown")
             return GENERIC_403
 
         if site_id:
@@ -130,7 +132,7 @@ def create_shield_app(site_id: str | None = None, csp: str | None = None, asset_
                     return FileResponse(
                         path=str(learned_path),
                         media_type=ct or "application/octet-stream",
-                        headers={"X-Served-By": "WebShield", "X-Learned": "true"},
+                        headers={"X-Served-By": "FrontWall", "X-Learned": "true"},
                     )
             return GENERIC_404
 
@@ -141,7 +143,7 @@ def create_shield_app(site_id: str | None = None, csp: str | None = None, asset_
         return FileResponse(
             path=str(file_path),
             media_type=content_type,
-            headers={"X-Served-By": "WebShield"},
+            headers={"X-Served-By": "FrontWall"},
         )
 
     return shield

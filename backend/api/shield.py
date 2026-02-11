@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from config import settings
 from services import shield_service
 
-logger = logging.getLogger("webshield.api.shield")
+logger = logging.getLogger("frontwall.api.shield")
 
 router = APIRouter(prefix="/api/shield", tags=["shield"])
 

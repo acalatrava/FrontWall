@@ -18,7 +18,7 @@ from crawler.sitemap_parser import discover_urls_from_sitemaps
 from crawler.form_detector import detect_forms
 from crawler.asset_processor import extract_asset_urls, download_asset
 
-logger = logging.getLogger("webshield.crawler.engine")
+logger = logging.getLogger("frontwall.crawler.engine")
 
 
 class CrawlerEngine:
@@ -251,7 +251,7 @@ class CrawlerEngine:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         headers = {
-            "User-Agent": "WebShield Crawler/1.0 (+https://github.com/webshield)",
+            "User-Agent": "FrontWall Crawler/1.0 (+https://github.com/frontwall)",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
         }

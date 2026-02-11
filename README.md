@@ -1,11 +1,11 @@
-# Web Shield
+# FrontWall
 
 A security-focused service that sits in front of WordPress (or any website), crawls it, caches everything as static files, and serves them through a hardened server with a WAF, input sanitization, and configurable POST exceptions.
 
 ## Architecture
 
 ```
-Internet → Nginx Proxy Manager (TLS) → Web Shield (port 8080) → Static Cache
+Internet → Nginx Proxy Manager (TLS) → FrontWall (port 8080) → Static Cache
                                                                 ↓ (POST only)
                                                         Sanitizer + WAF
                                                                 ↓
@@ -22,7 +22,7 @@ flowchart TB
         NPM[TLS Termination]
     end
 
-    subgraph webshield [Web Shield Container]
+    subgraph frontwall [FrontWall Container]
         subgraph adminMode [Admin Mode - port 8000]
             AdminUI[Admin UI - Vue 3]
             API[FastAPI API]
@@ -115,12 +115,12 @@ The frontend dev server runs on port 3000 and proxies API calls to port 8000.
 
 ## Nginx Proxy Manager Configuration
 
-Point your domain's proxy host to the Web Shield container:
+Point your domain's proxy host to the FrontWall container:
 
-- **Forward Hostname/IP**: `webshield` (container name) or `localhost`
+- **Forward Hostname/IP**: `frontwall` (container name) or `localhost`
 - **Forward Port**: `8080`
 - **Websocket Support**: Not needed for the shield port
-- **Block Common Exploits**: Optional (Web Shield already does this)
+- **Block Common Exploits**: Optional (FrontWall already does this)
 
 Keep port `8000` **internal only** — do not expose the admin UI publicly.
 
@@ -141,7 +141,7 @@ Keep port `8000` **internal only** — do not expose the admin UI publicly.
 
 ## Security
 
-Web Shield applies multiple layers of security:
+FrontWall applies multiple layers of security:
 
 1. **Static serving eliminates the WordPress attack surface** — no PHP execution, no database queries
 2. **WAF blocks** known attack tools, path traversal, and WordPress-specific attack paths

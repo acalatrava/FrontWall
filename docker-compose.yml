@@ -1,7 +1,7 @@
 services:
-  webshield:
+  frontwall:
     build: .
-    container_name: webshield
+    container_name: frontwall
     ports:
       - "8000:8000"
       - "8080:8080"
@@ -18,7 +18,13 @@ services:
       - WS_MAX_REQUEST_SIZE_BYTES=1048576
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3

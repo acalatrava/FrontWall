@@ -8,7 +8,7 @@ from models.crawl_job import CrawlJob
 from schemas.crawl_job import CrawlJobResponse
 from services import crawl_service
 
-logger = logging.getLogger("webshield.api.crawler")
+logger = logging.getLogger("frontwall.api.crawler")
 
 router = APIRouter(prefix="/api/crawler", tags=["crawler"])
 ws_router = APIRouter(prefix="/api/crawler", tags=["crawler-ws"])

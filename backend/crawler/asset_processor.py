@@ -1,3 +1,4 @@
+from crawler.url_rewriter import URLRewriter
 import logging
 import mimetypes
 from pathlib import Path
@@ -11,9 +12,8 @@ from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
-from crawler.url_rewriter import URLRewriter
 
-logger = logging.getLogger("webshield.crawler.assets")
+logger = logging.getLogger("frontwall.crawler.assets")
 
 ASSET_EXTENSIONS = {
     ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif",

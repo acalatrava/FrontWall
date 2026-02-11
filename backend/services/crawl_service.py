@@ -14,7 +14,7 @@ from models.page import Page
 from models.crawl_job import CrawlJob
 from crawler.engine import CrawlerEngine
 
-logger = logging.getLogger("webshield.services.crawl")
+logger = logging.getLogger("frontwall.services.crawl")
 
 _active_crawlers: dict[str, CrawlerEngine] = {}
 

@@ -26,7 +26,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     stream=sys.stdout,
 )
-logger = logging.getLogger("webshield")
+logger = logging.getLogger("frontwall")
 
 _cleanup_task: asyncio.Task | None = None
 
@@ -58,11 +58,11 @@ async def lifespan(app: FastAPI):
     await init_db()
     await auto_deploy_if_needed()
     _cleanup_task = asyncio.create_task(_cleanup_expired_tokens())
-    logger.info("Web Shield started — admin on port %s", settings.admin_port)
+    logger.info("FrontWall started — admin on port %s", settings.admin_port)
     yield
     if _cleanup_task:
         _cleanup_task.cancel()
-    logger.info("Web Shield shutting down")
+    logger.info("FrontWall shutting down")
 
 
 app = FastAPI(

@@ -19,7 +19,7 @@ from shield.rate_limiter import RateLimiter
 from shield.post_handler import PostHandler
 from shield.asset_learner import AssetLearner
 
-logger = logging.getLogger("webshield.services.shield")
+logger = logging.getLogger("frontwall.services.shield")
 
 _shield_server: uvicorn.Server | None = None
 _shield_task: asyncio.Task | None = None

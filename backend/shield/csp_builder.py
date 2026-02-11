@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-logger = logging.getLogger("webshield.shield.csp_builder")
+logger = logging.getLogger("frontwall.shield.csp_builder")
 
 _URL_RE = re.compile(r'https?://[a-zA-Z0-9._-]+(?:\.[a-zA-Z]{2,})+')
 

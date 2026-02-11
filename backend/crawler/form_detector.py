@@ -2,7 +2,7 @@ import json
 import logging
 from bs4 import BeautifulSoup, Tag
 
-logger = logging.getLogger("webshield.crawler.forms")
+logger = logging.getLogger("frontwall.crawler.forms")
 
 
 def detect_forms(html: str, page_url: str) -> str | None:
