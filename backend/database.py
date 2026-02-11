@@ -37,6 +37,7 @@ def _add_missing_columns(conn) -> None:
     _ensure_column(conn, inspector, "sites", "max_body_size", "INTEGER DEFAULT 1048576")
     _ensure_column(conn, inspector, "sites", "ip_whitelist", "TEXT DEFAULT ''")
     _ensure_column(conn, inspector, "sites", "ip_blacklist", "TEXT DEFAULT ''")
+    _ensure_column(conn, inspector, "sites", "blocked_countries", "TEXT DEFAULT ''")
     _ensure_column(conn, inspector, "post_rules", "allowed_actions", "TEXT")
     _ensure_column(conn, inspector, "sites", "learned_csp_origins", "TEXT DEFAULT ''")
 

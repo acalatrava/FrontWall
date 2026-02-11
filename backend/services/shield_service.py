@@ -113,6 +113,7 @@ async def deploy_shield(site_id: str) -> int:
         max_body_size = site.max_body_size
         ip_whitelist = _parse_ip_list(site.ip_whitelist)
         ip_blacklist = _parse_ip_list(site.ip_blacklist)
+        blocked_countries = _parse_ip_list(site.blocked_countries)
         persisted_csp_origins = site.learned_csp_origins or ""
 
     for other_id, inst in _shields.items():
@@ -183,6 +184,7 @@ async def deploy_shield(site_id: str) -> int:
             max_body_size=max_body_size,
             ip_whitelist=ip_whitelist,
             ip_blacklist=ip_blacklist,
+            blocked_countries=blocked_countries,
             post_handler=post_handler,
             block_bots=block_bots,
             block_suspicious_paths=block_suspicious_paths,

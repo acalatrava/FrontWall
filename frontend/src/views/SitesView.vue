@@ -213,6 +213,76 @@
                 <input v-model="form.ip_blacklist" type="text" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="10.0.0.1, 10.0.0.2" />
                 <p class="text-xs text-gray-500 mt-1">Comma-separated IPs to block.</p>
               </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Country Blocking</label>
+                <p class="text-xs text-gray-500 mb-2">Block traffic from specific countries. Uses Cloudflare CF-IPCountry header.</p>
+
+                <div v-if="selectedCountries.length" class="flex flex-wrap gap-1.5 mb-3">
+                  <span
+                    v-for="code in selectedCountries"
+                    :key="code"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/50 border border-red-700/50 text-red-300 text-xs rounded-full"
+                  >
+                    {{ code }} - {{ countryName(code) }}
+                    <button type="button" @click="toggleCountry(code)" class="hover:text-red-100 ml-0.5">&times;</button>
+                  </span>
+                </div>
+
+                <div class="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    @click="showCountryPicker = !showCountryPicker"
+                    class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded-lg transition-colors"
+                  >
+                    {{ showCountryPicker ? 'Hide Picker' : 'Select Countries' }}
+                  </button>
+                  <button
+                    type="button"
+                    @click="addHighRiskPreset"
+                    class="px-3 py-1.5 bg-amber-900/50 hover:bg-amber-800/50 text-amber-300 text-xs rounded-lg border border-amber-700/50 transition-colors"
+                  >
+                    + High-Risk Preset
+                  </button>
+                  <button
+                    v-if="selectedCountries.length"
+                    type="button"
+                    @click="clearBlockedCountries"
+                    class="px-3 py-1.5 text-gray-400 hover:text-gray-200 text-xs transition-colors"
+                  >
+                    Clear All
+                  </button>
+                </div>
+
+                <div v-if="showCountryPicker" class="bg-gray-800 border border-gray-700 rounded-lg p-3 max-h-52 overflow-hidden flex flex-col">
+                  <input
+                    v-model="countrySearch"
+                    type="text"
+                    placeholder="Search countries..."
+                    class="w-full px-3 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-white text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <div class="overflow-y-auto flex-1 space-y-0.5">
+                    <label
+                      v-for="c in filteredCountries"
+                      :key="c.code"
+                      class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-gray-700/50 text-xs"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="selectedCountries.includes(c.code)"
+                        @change="toggleCountry(c.code)"
+                        class="rounded bg-gray-800 border-gray-600"
+                      />
+                      <span class="text-gray-300">{{ c.code }}</span>
+                      <span class="text-gray-400">{{ c.name }}</span>
+                      <span
+                        v-if="highRiskCountries.includes(c.code)"
+                        class="ml-auto text-amber-400 text-[10px] font-medium"
+                      >HIGH RISK</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -233,6 +303,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSitesStore } from '../stores/sites'
+import api from '../api'
 
 const store = useSitesStore()
 const { sites, loading } = storeToRefs(store)
@@ -242,6 +313,57 @@ const showSecurity = ref(false)
 const submitting = ref(false)
 const formError = ref('')
 const editingSiteId = ref(null)
+
+const allCountries = ref([])
+const highRiskCountries = ref([])
+const countrySearch = ref('')
+const showCountryPicker = ref(false)
+
+async function loadCountries() {
+  try {
+    const { data } = await api.get('/shield/countries')
+    allCountries.value = data.countries
+    highRiskCountries.value = data.high_risk
+  } catch { /* countries will stay empty */ }
+}
+
+const selectedCountries = computed({
+  get: () => form.blocked_countries ? form.blocked_countries.split(',').filter(Boolean) : [],
+  set: (codes) => { form.blocked_countries = codes.join(',') },
+})
+
+const filteredCountries = computed(() => {
+  const q = countrySearch.value.toLowerCase()
+  if (!q) return allCountries.value
+  return allCountries.value.filter(c =>
+    c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+  )
+})
+
+function toggleCountry(code) {
+  const current = new Set(selectedCountries.value)
+  if (current.has(code)) {
+    current.delete(code)
+  } else {
+    current.add(code)
+  }
+  selectedCountries.value = [...current].sort()
+}
+
+function addHighRiskPreset() {
+  const current = new Set(selectedCountries.value)
+  highRiskCountries.value.forEach(c => current.add(c))
+  selectedCountries.value = [...current].sort()
+}
+
+function clearBlockedCountries() {
+  selectedCountries.value = []
+}
+
+function countryName(code) {
+  const c = allCountries.value.find(x => x.code === code)
+  return c ? c.name : code
+}
 
 const defaultForm = {
   name: '',
@@ -263,6 +385,7 @@ const defaultForm = {
   max_body_size: 1048576,
   ip_whitelist: '',
   ip_blacklist: '',
+  blocked_countries: '',
 }
 
 const form = reactive({ ...defaultForm })
@@ -272,13 +395,18 @@ const bodySizeKB = computed({
   set: (v) => { form.max_body_size = v * 1024 },
 })
 
-onMounted(() => store.fetchSites())
+onMounted(() => {
+  store.fetchSites()
+  loadCountries()
+})
 
 function openCreateModal() {
   editingSiteId.value = null
   Object.assign(form, { ...defaultForm })
   showAdvanced.value = false
   showSecurity.value = false
+  showCountryPicker.value = false
+  countrySearch.value = ''
   formError.value = ''
   showModal.value = true
 }
@@ -305,9 +433,12 @@ function openEditModal(site) {
     max_body_size: site.max_body_size,
     ip_whitelist: site.ip_whitelist || '',
     ip_blacklist: site.ip_blacklist || '',
+    blocked_countries: site.blocked_countries || '',
   })
   showAdvanced.value = !!(site.internal_url || site.override_host)
   showSecurity.value = false
+  showCountryPicker.value = false
+  countrySearch.value = ''
   formError.value = ''
   showModal.value = true
 }

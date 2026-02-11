@@ -113,6 +113,18 @@
           </div>
         </div>
 
+        <div v-if="selectedSite.blocked_countries" class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h2 class="text-lg font-semibold text-white mb-4">Country Blocking</h2>
+          <p class="text-xs text-gray-500 mb-3">Traffic from these countries is blocked at the WAF level.</p>
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="code in selectedSite.blocked_countries.split(',').filter(Boolean)"
+              :key="code"
+              class="px-2.5 py-1 bg-red-900/40 border border-red-700/40 text-red-300 rounded-full text-xs font-medium"
+            >{{ code.trim() }}</span>
+          </div>
+        </div>
+
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <h2 class="text-lg font-semibold text-white mb-4">Request Size Limit</h2>
           <div class="bg-gray-800/50 rounded-lg p-4 text-sm">
@@ -193,6 +205,7 @@ const wafFeatures = computed(() => {
     { name: 'Suspicious Path Blocking', description: 'Blocks wp-admin, path traversal, .env, .git, etc.', enabled: s.block_suspicious_paths },
     { name: 'Request Size Limits', description: `Max body: ${formatSize(s.max_body_size)}`, enabled: true },
     { name: 'IP Access Control', description: 'Whitelist / blacklist specific IPs', enabled: !!(s.ip_whitelist || s.ip_blacklist) },
+    { name: 'Country Blocking', description: 'Block traffic from specific countries via GeoIP', enabled: !!s.blocked_countries },
     { name: 'POST Sanitization', description: 'Multi-layer input validation for form submissions', enabled: true },
   ]
 })

@@ -231,6 +231,7 @@ const eventTypeColors = {
   suspicious_path: '#ef4444',
   suspicious_query: '#dc2626',
   ip_blacklisted: '#7c3aed',
+  country_blocked: '#a855f7',
   payload_too_large: '#06b6d4',
   honeypot_triggered: '#ec4899',
   post_unregistered: '#6b7280',

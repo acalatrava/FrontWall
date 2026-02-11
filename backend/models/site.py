@@ -38,6 +38,7 @@ class Site(Base):
     max_body_size: Mapped[int] = mapped_column(Integer, default=1_048_576)
     ip_whitelist: Mapped[str] = mapped_column(Text, default="")
     ip_blacklist: Mapped[str] = mapped_column(Text, default="")
+    blocked_countries: Mapped[str] = mapped_column(Text, default="")
     learned_csp_origins: Mapped[str] = mapped_column(Text, default="")
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

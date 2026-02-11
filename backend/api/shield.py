@@ -2,6 +2,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from services import shield_service
+from shield.geo_resolver import COUNTRY_MAP, HIGH_RISK_COUNTRIES
 
 logger = logging.getLogger("frontwall.api.shield")
 
@@ -71,3 +72,14 @@ async def learned_assets(site_id: str):
 @router.get("/learned-csp/{site_id}")
 async def learned_csp(site_id: str):
     return shield_service.get_learned_csp_origins(site_id)
+
+
+@router.get("/countries")
+async def list_countries():
+    return {
+        "countries": [
+            {"code": code, "name": name}
+            for code, name in sorted(COUNTRY_MAP.items(), key=lambda x: x[1])
+        ],
+        "high_risk": HIGH_RISK_COUNTRIES,
+    }

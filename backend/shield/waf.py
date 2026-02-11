@@ -5,6 +5,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from shield.rate_limiter import RateLimiter
+from shield.geo_resolver import get_country_code
 from utils import get_client_ip
 
 logger = logging.getLogger("frontwall.shield.waf")
@@ -39,6 +40,7 @@ SUSPICIOUS_PATH_PATTERNS = [
 ]
 
 BLOCKED_RESPONSE = Response(content="Forbidden", status_code=403, media_type="text/plain")
+GEO_BLOCKED_RESPONSE = Response(content="Access Denied", status_code=403, media_type="text/plain")
 RATE_LIMITED_RESPONSE = Response(content="Too Many Requests", status_code=429, media_type="text/plain")
 PAYLOAD_TOO_LARGE = Response(content="Payload Too Large", status_code=413, media_type="text/plain")
 GENERIC_400 = Response(content="Bad Request", status_code=400, media_type="text/plain")
@@ -63,6 +65,7 @@ class WAFMiddleware(BaseHTTPMiddleware):
         post_handler=None,
         block_bots: bool = True,
         block_suspicious_paths: bool = True,
+        blocked_countries: set[str] | None = None,
         site_id: str = "",
         event_collector=None,
     ):
@@ -74,10 +77,11 @@ class WAFMiddleware(BaseHTTPMiddleware):
         self.post_handler = post_handler
         self.block_bots = block_bots
         self.block_suspicious_paths = block_suspicious_paths
+        self.blocked_countries = blocked_countries or set()
         self.site_id = site_id
         self.collector = event_collector
 
-    def _emit(self, event_type, severity, client_ip, path, method, user_agent, details=None):
+    def _emit(self, event_type, severity, client_ip, path, method, user_agent, details=None, country=None):
         if self.collector:
             self.collector.emit(
                 event_type=event_type,
@@ -89,6 +93,7 @@ class WAFMiddleware(BaseHTTPMiddleware):
                 site_id=self.site_id,
                 details=details,
                 blocked=True,
+                country=country,
             )
 
     async def dispatch(self, request: Request, call_next):
@@ -104,6 +109,16 @@ class WAFMiddleware(BaseHTTPMiddleware):
 
         if self.ip_whitelist and client_ip not in self.ip_whitelist:
             pass
+
+        if self.blocked_countries:
+            country = get_country_code(request, client_ip)
+            if country and country in self.blocked_countries:
+                logger.warning("Blocked request from country %s (IP: %s)", country, client_ip)
+                self._emit(
+                    "country_blocked", "high", client_ip, path, method, user_agent,
+                    {"country": country}, country=country,
+                )
+                return GEO_BLOCKED_RESPONSE
 
         if self.block_bots and self._is_malicious_bot(user_agent):
             logger.warning("Blocked malicious bot: %s (IP: %s)", user_agent, client_ip)

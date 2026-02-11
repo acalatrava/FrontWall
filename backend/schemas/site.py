@@ -55,6 +55,19 @@ class SiteCreate(BaseModel):
     max_body_size: int = 1_048_576
     ip_whitelist: str = ""
     ip_blacklist: str = ""
+    blocked_countries: str = ""
+
+    @field_validator("blocked_countries")
+    @classmethod
+    def validate_blocked_countries(cls, v: str) -> str:
+        if not v or not v.strip():
+            return ""
+        import re as _re
+        codes = [c.strip().upper() for c in v.split(",") if c.strip()]
+        for code in codes:
+            if not _re.fullmatch(r"[A-Z]{2}", code):
+                raise ValueError(f"Invalid country code: {code}")
+        return ",".join(sorted(set(codes)))
 
     @field_validator("name")
     @classmethod
@@ -169,6 +182,19 @@ class SiteUpdate(BaseModel):
     max_body_size: int | None = None
     ip_whitelist: str | None = None
     ip_blacklist: str | None = None
+    blocked_countries: str | None = None
+
+    @field_validator("blocked_countries")
+    @classmethod
+    def validate_blocked_countries(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return v
+        import re as _re
+        codes = [c.strip().upper() for c in v.split(",") if c.strip()]
+        for code in codes:
+            if not _re.fullmatch(r"[A-Z]{2}", code):
+                raise ValueError(f"Invalid country code: {code}")
+        return ",".join(sorted(set(codes)))
 
     @field_validator("target_url")
     @classmethod
@@ -234,6 +260,7 @@ class SiteResponse(BaseModel):
     max_body_size: int
     ip_whitelist: str
     ip_blacklist: str
+    blocked_countries: str
     created_at: datetime
     updated_at: datetime
 

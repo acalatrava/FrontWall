@@ -46,6 +46,7 @@ class SecurityEventCollector:
         site_id: str | None = None,
         details: dict | None = None,
         blocked: bool = True,
+        country: str | None = None,
     ):
         now = datetime.now(timezone.utc)
         event = {
@@ -59,6 +60,7 @@ class SecurityEventCollector:
             "user_agent": user_agent[:500],
             "details": json.dumps(details or {}),
             "blocked": blocked,
+            "country": country,
         }
 
         self._global_ring.append(event)
@@ -308,6 +310,7 @@ class SecurityEventCollector:
                             user_agent=evt["user_agent"],
                             details=evt["details"],
                             blocked=evt["blocked"],
+                            country=evt.get("country"),
                         )
                         db.add(row)
                     await db.commit()
