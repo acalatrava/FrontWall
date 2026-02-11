@@ -5,8 +5,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete
 
@@ -102,11 +103,23 @@ async def health_check():
     return {"status": "ok"}
 
 
-_static_candidates = [
+_static_dir: Path | None = None
+for _candidate in [
     Path(__file__).parent / "static",
     Path(__file__).parent.parent / "frontend" / "dist",
-]
-for _candidate in _static_candidates:
+]:
     if _candidate.exists():
-        app.mount("/", StaticFiles(directory=str(_candidate), html=True), name="frontend")
+        _static_dir = _candidate
         break
+
+if _static_dir:
+    app.mount("/assets", StaticFiles(directory=str(_static_dir / "assets")), name="static-assets")
+
+    _index_html = _static_dir / "index.html"
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str = ""):
+        file_path = _static_dir / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_index_html))
