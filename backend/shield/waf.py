@@ -5,6 +5,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from shield.rate_limiter import RateLimiter
+from utils import get_client_ip
 
 logger = logging.getLogger("frontwall.shield.waf")
 
@@ -91,7 +92,7 @@ class WAFMiddleware(BaseHTTPMiddleware):
             )
 
     async def dispatch(self, request: Request, call_next):
-        client_ip = self._get_client_ip(request)
+        client_ip = get_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
         path = request.url.path
         method = request.method
@@ -148,16 +149,6 @@ class WAFMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
         return response
-
-    def _get_client_ip(self, request: Request) -> str:
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip:
-            return real_ip.strip()
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            parts = [p.strip() for p in forwarded.split(",")]
-            return parts[-1] if len(parts) > 1 else parts[0]
-        return request.client.host if request.client else "0.0.0.0"
 
     def _is_malicious_bot(self, user_agent: str) -> bool:
         for pattern in MALICIOUS_BOT_PATTERNS:

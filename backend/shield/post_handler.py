@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse, Resp
 
 from shield.sanitizer import InputSanitizer
 from shield.rate_limiter import RateLimiter
+from utils import get_client_ip
 
 logger = logging.getLogger("frontwall.shield.post_handler")
 
@@ -95,7 +96,7 @@ class PostHandler:
 
     async def handle_post(self, request: Request) -> Response:
         path = request.url.path
-        client_ip = self._get_client_ip(request)
+        client_ip = get_client_ip(request)
 
         rule = self.find_matching_rule(path)
         if not rule:
@@ -310,11 +311,3 @@ class PostHandler:
             logger.error("Error forwarding learned POST to %s: %s", forward_url, exc)
             return Response(content="Bad Gateway", status_code=502, media_type="text/plain")
 
-    def _get_client_ip(self, request: Request) -> str:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip:
-            return real_ip.strip()
-        return request.client.host if request.client else "0.0.0.0"

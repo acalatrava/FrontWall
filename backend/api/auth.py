@@ -18,6 +18,7 @@ from models.admin_user import AdminUser
 from models.refresh_token import RefreshToken
 from schemas.auth import SetupRequest, LoginRequest, AuthResponse
 from services.security_collector import collector as security_collector
+from utils import get_client_ip
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -187,9 +188,7 @@ async def setup(data: SetupRequest, response: Response, db: AsyncSession = Depen
 
 @router.post("/login")
 async def login(data: LoginRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
-    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
-        request.client.host if request.client else "0.0.0.0"
-    )
+    client_ip = get_client_ip(request)
     await _check_login_rate(client_ip)
 
     result = await db.execute(select(AdminUser).where(AdminUser.username == data.username))
@@ -237,9 +236,7 @@ async def refresh_tokens(request: Request, response: Response, db: AsyncSession 
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     if stored.revoked:
-        client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
-            request.client.host if request.client else "0.0.0.0"
-        )
+        client_ip = get_client_ip(request)
         security_collector.emit(
             event_type="token_reuse",
             severity="critical",
