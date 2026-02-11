@@ -9,9 +9,12 @@ from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse, Resp
 
 from shield.sanitizer import InputSanitizer
 from shield.rate_limiter import RateLimiter
+from shield.post_security import scan_post_data
 from utils import get_client_ip
 
 logger = logging.getLogger("frontwall.shield.post_handler")
+
+ADMIN_AJAX_PATHS = {"/wp-admin/admin-ajax.php", "/wp-admin/admin-post.php"}
 
 
 class PostHandler:
@@ -94,6 +97,35 @@ class PostHandler:
                     continue
         return None
 
+    def _parse_form_data(self, raw_data: dict[str, str], path: str) -> dict[str, str]:
+        """Return the raw_data as-is — parsing already happened."""
+        return raw_data
+
+    def _check_action_whitelist(self, rule: dict, raw_data: dict[str, str], path: str) -> str | None:
+        """For admin-ajax endpoints, verify the action is in the allowed list.
+
+        Returns None if allowed, or an error string if blocked.
+        """
+        if path.lower() not in ADMIN_AJAX_PATHS:
+            return None
+
+        allowed_csv = rule.get("allowed_actions")
+        if not allowed_csv:
+            return None
+
+        allowed_set = {a.strip().lower() for a in allowed_csv.split(",") if a.strip()}
+        if not allowed_set:
+            return None
+
+        action = raw_data.get("action", "").strip().lower()
+        if not action:
+            return "Missing 'action' parameter for admin-ajax endpoint"
+
+        if action not in allowed_set:
+            return f"Action '{action}' is not in the allowed list"
+
+        return None
+
     async def handle_post(self, request: Request) -> Response:
         path = request.url.path
         client_ip = get_client_ip(request)
@@ -134,6 +166,18 @@ class PostHandler:
                 return Response(content="Unsupported Media Type", status_code=415, media_type="text/plain")
         except Exception:
             return Response(content="Bad Request", status_code=400, media_type="text/plain")
+
+        threat = scan_post_data(raw_data, client_ip=client_ip, path=path)
+        if threat:
+            logger.warning("POST security scan blocked: %s on %s (IP: %s)", threat["threat"], path, client_ip)
+            self._emit("post_injection_blocked", "critical", client_ip, path, request, threat)
+            return Response(content="Forbidden", status_code=403, media_type="text/plain")
+
+        action_err = self._check_action_whitelist(rule, raw_data, path)
+        if action_err:
+            logger.warning("Admin-ajax action blocked: %s (IP: %s, path: %s)", action_err, client_ip, path)
+            self._emit("post_action_blocked", "high", client_ip, path, request, {"reason": action_err, "action": raw_data.get("action", "")})
+            return Response(content="Forbidden", status_code=403, media_type="text/plain")
 
         honeypot = rule.get("honeypot_field")
         if honeypot and raw_data.get(honeypot):
@@ -207,6 +251,7 @@ class PostHandler:
         forward_url = self._build_forward_url(path)
 
         field_names = []
+        raw_data = {}
         already_known = any(p["path"] == path for p in self.learned_posts)
 
         if not already_known and len(self.learned_posts) < self._max_learned:
@@ -215,19 +260,32 @@ class PostHandler:
                 if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
                     form_data = await request.form()
                     field_names = list(form_data.keys())
+                    raw_data = {k: str(v) for k, v in form_data.items() if not hasattr(v, "read")}
                 elif "application/json" in content_type:
                     json_body = _json.loads(body)
                     if isinstance(json_body, dict):
                         field_names = list(json_body.keys())
+                        raw_data = {k: str(v) for k, v in json_body.items()}
             except Exception:
                 pass
+
+            threat = scan_post_data(raw_data, client_ip=client_ip, path=path)
+            if threat:
+                logger.warning("Learn mode security scan blocked: %s on %s (IP: %s)", threat["threat"], path, client_ip)
+                self._emit("post_injection_blocked", "critical", client_ip, path, request, threat)
+                return Response(content="Forbidden", status_code=403, media_type="text/plain")
+
+            learned_action = None
+            if path.lower() in ADMIN_AJAX_PATHS and "action" in raw_data:
+                learned_action = raw_data["action"].strip()
 
             self.learned_posts.append({
                 "path": path,
                 "fields": field_names,
                 "client_ip": client_ip,
+                "action": learned_action,
             })
-            logger.info("Learn mode captured POST: %s (fields: %s, IP: %s)", path, field_names, client_ip)
+            logger.info("Learn mode captured POST: %s (fields: %s, action: %s, IP: %s)", path, field_names, learned_action, client_ip)
 
             try:
                 from database import async_session
@@ -237,12 +295,13 @@ class PostHandler:
                 async with async_session() as db:
                     rule = PostRule(
                         site_id=self.site_id,
-                        name=f"Auto-learned: {path}",
+                        name=f"Auto-learned: {path}" + (f" [{learned_action}]" if learned_action else ""),
                         url_pattern=path,
                         forward_to=db_forward_url,
                         is_active=True,
                         rate_limit_requests=10,
                         rate_limit_window=60,
+                        allowed_actions=learned_action if learned_action else None,
                     )
                     db.add(rule)
                     await db.flush()
@@ -268,15 +327,18 @@ class PostHandler:
                     "rate_limit_window": 60,
                     "honeypot_field": None,
                     "enable_csrf": False,
+                    "allowed_actions": learned_action if learned_action else None,
                     "fields": [
                         {"field_name": f, "field_type": "text", "required": False,
                             "max_length": 5000, "validation_regex": None}
                         for f in field_names
                     ],
                 })
-                logger.info("Auto-created POST rule for %s with %d fields", path, len(field_names))
+                logger.info("Auto-created POST rule for %s with %d fields (allowed_actions: %s)", path, len(field_names), learned_action)
             except Exception as exc:
                 logger.error("Failed to auto-create rule for %s: %s", path, exc)
+        elif already_known and path.lower() in ADMIN_AJAX_PATHS and raw_data.get("action"):
+            self._append_learned_action(path, raw_data["action"].strip())
 
         try:
             forward_headers = self._get_forward_headers(request, client_ip)
@@ -311,3 +373,39 @@ class PostHandler:
             logger.error("Error forwarding learned POST to %s: %s", forward_url, exc)
             return Response(content="Bad Gateway", status_code=502, media_type="text/plain")
 
+    def _append_learned_action(self, path: str, action: str):
+        """When a known admin-ajax rule receives a new action in learn mode, add it."""
+        for rule in self.rules:
+            if rule["url_pattern"] != path:
+                continue
+            current = rule.get("allowed_actions") or ""
+            existing = {a.strip().lower() for a in current.split(",") if a.strip()}
+            if action.lower() in existing:
+                return
+            new_list = current + (", " if current else "") + action
+            rule["allowed_actions"] = new_list
+
+            try:
+                import asyncio
+                asyncio.ensure_future(self._update_allowed_actions_db(path, new_list))
+            except Exception:
+                pass
+            logger.info("Appended action '%s' to rule for %s", action, path)
+            return
+
+    async def _update_allowed_actions_db(self, path: str, allowed_actions: str):
+        """Persist the updated allowed_actions to the database."""
+        try:
+            from database import async_session
+            from models.post_rule import PostRule
+            from sqlalchemy import update as sa_update
+
+            async with async_session() as db:
+                await db.execute(
+                    sa_update(PostRule)
+                    .where(PostRule.site_id == self.site_id, PostRule.url_pattern == path)
+                    .values(allowed_actions=allowed_actions)
+                )
+                await db.commit()
+        except Exception as exc:
+            logger.error("Failed to update allowed_actions for %s: %s", path, exc)

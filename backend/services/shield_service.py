@@ -67,6 +67,7 @@ async def _load_post_rules(site_id: str) -> list[dict]:
                 "rate_limit_window": rule.rate_limit_window,
                 "honeypot_field": rule.honeypot_field,
                 "enable_csrf": rule.enable_csrf,
+                "allowed_actions": rule.allowed_actions,
                 "fields": fields,
             })
         return rule_dicts

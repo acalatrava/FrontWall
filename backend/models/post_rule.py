@@ -24,6 +24,7 @@ class PostRule(Base):
 
     honeypot_field: Mapped[str | None] = mapped_column(String(255), nullable=True)
     enable_csrf: Mapped[bool] = mapped_column(Boolean, default=False)
+    allowed_actions: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
