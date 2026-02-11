@@ -39,6 +39,7 @@ flowchart LR
     NPM --> Shield[FrontWall Shield]
     Shield -->|GET| Cache[(Static Cache)]
     Shield -->|POST| WAF[WAF + Sanitizer]
+    Shield -.->|Bypass Mode| WP
     WAF --> WP[WordPress]
     Admin([Admin]) --> UI[Dashboard :8000]
     UI --> API[FastAPI]
@@ -64,6 +65,7 @@ flowchart LR
 - **LFI/RFI detection** — Blocks local/remote file inclusion patterns, double encoding, and null-byte injection.
 
 ### Intelligence
+- **Bypass mode** — One-click full reverse proxy to the origin WordPress for admin tasks (plugin updates, content editing) without undeploying the shield.
 - **Learn mode** — Automatically discovers POST rules, CSP origins, and missing assets from live traffic.
 - **Security analytics** — Real-time dashboard with threat timeline, attacker tracking, event breakdown, severity charts, and log export (CSV/JSON).
 - **Form detection** — Crawler detects HTML forms and suggests POST exception rules.
@@ -215,6 +217,7 @@ Each site has its own configuration in the dashboard, including:
 - **IP whitelist / blacklist** — Allow or block specific IPs
 - **Country blocking** — Block traffic from specific countries
 - **Max body size** — Limit POST request body size
+- **Bypass mode** — Temporarily proxy all traffic to WordPress for admin tasks
 - **Internal URL** — Direct address for WordPress behind a private network
 - **Override Host** — Custom Host header for internal connections
 

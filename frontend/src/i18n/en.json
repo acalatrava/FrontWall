@@ -355,7 +355,13 @@
     "waitingTraffic": "Waiting for traffic...",
     "deployFailed": "Failed to deploy shield",
     "undeployFailed": "Failed to undeploy shield",
-    "learnToggleFailed": "Failed to toggle learn mode"
+    "learnToggleFailed": "Failed to toggle learn mode",
+    "bypassMode": "Bypass Mode",
+    "bypassModeDesc": "Disables cache and proxies all traffic directly to the origin WordPress server",
+    "bypassActive": "Active",
+    "bypassOff": "Off",
+    "bypassWarning": "Bypass mode is active. All requests are being forwarded directly to the origin server — cache and WAF protections are disabled. Use this only for admin tasks and disable it when done.",
+    "bypassToggleFailed": "Failed to toggle bypass mode"
   },
   "users": {
     "title": "Users",

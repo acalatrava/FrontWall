@@ -356,7 +356,13 @@
     "waitingTraffic": "Esperando tráfico...",
     "deployFailed": "Error al desplegar el escudo",
     "undeployFailed": "Error al retirar el escudo",
-    "learnToggleFailed": "Error al cambiar el modo aprendizaje"
+    "learnToggleFailed": "Error al cambiar el modo aprendizaje",
+    "bypassMode": "Modo bypass",
+    "bypassModeDesc": "Desactiva la caché y redirige todo el tráfico directamente al servidor WordPress de origen",
+    "bypassActive": "Activo",
+    "bypassOff": "Desactivado",
+    "bypassWarning": "El modo bypass está activo. Todas las peticiones se están reenviando directamente al servidor de origen — la caché y las protecciones WAF están desactivadas. Usa esto solo para tareas de administración y desactívalo cuando termines.",
+    "bypassToggleFailed": "Error al cambiar el modo bypass"
   },
   "users": {
     "title": "Usuarios",

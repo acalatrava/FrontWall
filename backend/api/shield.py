@@ -48,7 +48,16 @@ async def status_site(site_id: str):
         "site_id": site_id,
         "active": shield_service.is_shield_active(site_id),
         "learn_mode": shield_service.is_learn_mode(site_id),
+        "bypass_mode": shield_service.is_bypass_mode(site_id),
     }
+
+
+@router.post("/bypass-mode/{site_id}")
+async def toggle_bypass_mode(site_id: str, enabled: bool = True):
+    if not shield_service.is_shield_active(site_id):
+        raise HTTPException(status_code=400, detail="Shield is not active for this site")
+    shield_service.set_bypass_mode(site_id, enabled)
+    return {"site_id": site_id, "bypass_mode": enabled}
 
 
 @router.post("/learn-mode/{site_id}")

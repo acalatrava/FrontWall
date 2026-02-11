@@ -41,6 +41,8 @@
     "cspDesc": "Content Security Policy is auto-generated from your site's actual resources. Learn mode discovers external origins automatically.",
     "learnMode": "Learn Mode",
     "learnModeDesc": "Automatically discover POST rules, CSP origins, and missing assets. FrontWall learns your site's needs, then locks down.",
+    "bypassMode": "Bypass Mode",
+    "bypassModeDesc": "Need to update WordPress? Enable bypass to proxy all traffic directly to the origin. Disable it when done — no redeploy needed.",
     "multiSite": "Multi-Site Support",
     "multiSiteDesc": "Protect multiple WordPress sites from a single FrontWall instance, each with independent security configurations and ports."
   },

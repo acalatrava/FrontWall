@@ -341,7 +341,8 @@ const featuresList = computed(() => [
   { title: t('features.analytics'), desc: t('features.analyticsDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', iconBg: 'bg-rose-500/10 text-rose-400' },
   { title: t('features.csp'), desc: t('features.cspDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>', iconBg: 'bg-indigo-500/10 text-indigo-400' },
   { title: t('features.learnMode'), desc: t('features.learnModeDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>', iconBg: 'bg-teal-500/10 text-teal-400' },
-  { title: t('features.multiSite'), desc: t('features.multiSiteDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>', iconBg: 'bg-orange-500/10 text-orange-400' },
+  { title: t('features.bypassMode'), desc: t('features.bypassModeDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>', iconBg: 'bg-orange-500/10 text-orange-400' },
+  { title: t('features.multiSite'), desc: t('features.multiSiteDesc'), icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>', iconBg: 'bg-yellow-500/10 text-yellow-400' },
 ])
 
 const stepsList = computed(() => [

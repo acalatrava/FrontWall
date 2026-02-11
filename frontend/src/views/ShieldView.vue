@@ -70,6 +70,45 @@
           </div>
 
           <div class="px-4 sm:px-6 py-4 border-t border-gray-800">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                  <svg class="w-4 h-4 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                  {{ t('shieldPage.bypassMode') }}
+                </h3>
+                <p class="text-xs text-gray-500 mt-0.5">{{ t('shieldPage.bypassModeDesc') }}</p>
+              </div>
+              <label class="flex items-center cursor-pointer">
+                <div class="relative">
+                  <input
+                    type="checkbox"
+                    :checked="getBypassMode(site.id)"
+                    @change="handleToggleBypass(site.id)"
+                    class="sr-only peer"
+                  />
+                  <div class="w-11 h-6 bg-gray-700 rounded-full peer-checked:bg-orange-500 transition-colors"></div>
+                  <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                </div>
+                <span class="ml-3 text-sm font-medium" :class="getBypassMode(site.id) ? 'text-orange-400' : 'text-gray-400'">
+                  {{ getBypassMode(site.id) ? t('shieldPage.bypassActive') : t('shieldPage.bypassOff') }}
+                </span>
+              </label>
+            </div>
+
+            <div v-if="getBypassMode(site.id)" class="mb-4 bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
+              <div class="flex items-start gap-2">
+                <svg class="w-4 h-4 text-orange-400 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <p class="text-xs text-orange-300">{{ t('shieldPage.bypassWarning') }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-4 sm:px-6 py-4 border-t border-gray-800">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
               <div>
                 <h3 class="text-sm font-semibold text-white">{{ t('shieldPage.learnMode') }}</h3>
@@ -189,6 +228,11 @@ function getLearnMode(siteId) {
   return s ? s.learn_mode : false
 }
 
+function getBypassMode(siteId) {
+  const s = shieldStore.getShield(siteId)
+  return s ? s.bypass_mode : false
+}
+
 async function fetchAllLearnedData() {
   for (const shield of shieldStore.shields) {
     if (!shield.learn_mode) continue
@@ -248,6 +292,15 @@ async function handleUndeploy(siteId) {
     delete siteLearnedCsp[siteId]
   } catch (e) {
     deployError.value = e.response?.data?.detail || t('shieldPage.undeployFailed')
+  }
+}
+
+async function handleToggleBypass(siteId) {
+  const current = getBypassMode(siteId)
+  try {
+    await shieldStore.toggleBypassMode(siteId, !current)
+  } catch (e) {
+    deployError.value = e.response?.data?.detail || t('shieldPage.bypassToggleFailed')
   }
 }
 

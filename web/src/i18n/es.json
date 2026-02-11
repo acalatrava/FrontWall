@@ -41,6 +41,8 @@
     "cspDesc": "La Política de Seguridad de Contenido se autogenera a partir de los recursos reales de tu sitio. El modo aprendizaje descubre orígenes externos automáticamente.",
     "learnMode": "Modo aprendizaje",
     "learnModeDesc": "Descubre automáticamente reglas POST, orígenes CSP y assets faltantes. FrontWall aprende las necesidades de tu sitio, luego se blinda.",
+    "bypassMode": "Modo bypass",
+    "bypassModeDesc": "¿Necesitas actualizar WordPress? Activa el bypass para redirigir todo el tráfico al origen. Desactívalo cuando termines — sin necesidad de redesplegar.",
     "multiSite": "Soporte multi-sitio",
     "multiSiteDesc": "Protege múltiples sitios WordPress desde una sola instancia de FrontWall, cada uno con configuraciones de seguridad y puertos independientes."
   },

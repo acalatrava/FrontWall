@@ -13,7 +13,7 @@ from config import settings
 from database import async_session
 from models.site import Site
 from models.post_rule import PostRule, RuleField
-from shield.server import create_shield_app
+from shield.server import create_shield_app, BypassState
 from shield.csp_builder import scan_cache_for_origins, build_csp
 from shield.waf import WAFMiddleware
 from shield.rate_limiter import RateLimiter
@@ -35,6 +35,7 @@ class ShieldInstance:
     csp_learner: CspLearner
     sec_headers_mw: SecurityHeadersMiddleware | None
     port: int
+    bypass_state: BypassState | None = None
 
 
 _shields: dict[str, ShieldInstance] = {}
@@ -148,6 +149,12 @@ async def deploy_shield(site_id: str) -> int:
         override_host=override_host,
     )
 
+    bypass = BypassState(
+        target_url=target_url,
+        internal_url=internal_url,
+        override_host=override_host,
+    )
+
     shield_app = create_shield_app(
         site_id,
         csp=csp,
@@ -155,6 +162,7 @@ async def deploy_shield(site_id: str) -> int:
         security_headers=security_headers_enabled,
         csp_learner=csp_learner,
         csp_state=csp_state,
+        bypass_state=bypass,
     )
 
     rate_limiter = RateLimiter(
@@ -175,6 +183,9 @@ async def deploy_shield(site_id: str) -> int:
 
     @shield_app.api_route("/{path:path}", methods=["POST"])
     async def handle_post(request: Request, path: str = ""):
+        if bypass.enabled:
+            from shield.server import _bypass_proxy_request
+            return await _bypass_proxy_request(bypass, request, path)
         return await post_handler.handle_post(request)
 
     if waf_enabled:
@@ -216,6 +227,7 @@ async def deploy_shield(site_id: str) -> int:
         csp_learner=csp_learner,
         sec_headers_mw=None,
         port=port,
+        bypass_state=bypass,
     )
     _shields[site_id]._csp_state = csp_state
 
@@ -264,9 +276,26 @@ def get_all_shields_status() -> list[dict]:
             "port": inst.port,
             "active": not inst.server.should_exit,
             "learn_mode": inst.post_handler.learn_mode,
+            "bypass_mode": inst.bypass_state.enabled if inst.bypass_state else False,
             "learned_csp_origins": len(inst.csp_learner.learned_origins),
         })
     return result
+
+
+def set_bypass_mode(site_id: str, enabled: bool) -> bool:
+    inst = _shields.get(site_id)
+    if inst is None or inst.bypass_state is None:
+        return False
+    inst.bypass_state.enabled = enabled
+    logger.info("Bypass mode %s for site %s", "enabled" if enabled else "disabled", site_id)
+    return True
+
+
+def is_bypass_mode(site_id: str) -> bool:
+    inst = _shields.get(site_id)
+    if inst is None or inst.bypass_state is None:
+        return False
+    return inst.bypass_state.enabled
 
 
 def set_learn_mode(site_id: str, enabled: bool) -> bool:

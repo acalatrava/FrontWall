@@ -43,6 +43,12 @@ export const useShieldStore = defineStore('shield', () => {
     return data
   }
 
+  async function toggleBypassMode(siteId, enabled) {
+    const { data } = await api.post(`/shield/bypass-mode/${siteId}`, null, { params: { enabled } })
+    await fetchStatus()
+    return data
+  }
+
   function isActive(siteId) {
     return shields.value.some(s => s.site_id === siteId && s.active)
   }
@@ -51,5 +57,5 @@ export const useShieldStore = defineStore('shield', () => {
     return shields.value.find(s => s.site_id === siteId)
   }
 
-  return { shields, loading, fetchStatus, fetchSiteStatus, deploy, undeploy, toggleLearnMode, isActive, getShield }
+  return { shields, loading, fetchStatus, fetchSiteStatus, deploy, undeploy, toggleLearnMode, toggleBypassMode, isActive, getShield }
 })
