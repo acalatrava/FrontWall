@@ -56,12 +56,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if csp:
             if self.csp_state.learn_mode:
                 rh["Content-Security-Policy-Report-Only"] = csp + "; report-uri /__csp_report"
-                rh.pop("Content-Security-Policy", None)
+                if "Content-Security-Policy" in rh:
+                    del rh["Content-Security-Policy"]
             else:
                 rh["Content-Security-Policy"] = csp
-                rh.pop("Content-Security-Policy-Report-Only", None)
+                if "Content-Security-Policy-Report-Only" in rh:
+                    del rh["Content-Security-Policy-Report-Only"]
 
         for h in HEADERS_TO_STRIP:
-            rh.pop(h, None)
+            if h in rh:
+                del rh[h]
 
         return response
