@@ -104,6 +104,7 @@
   },
   "sites": {
     "title": "Sites",
+    "edit": "Edit",
     "addSite": "+ Add Site",
     "noSitesMessage": "No sites configured. Add your first WordPress site to protect.",
     "concurrency": "Concurrency",
