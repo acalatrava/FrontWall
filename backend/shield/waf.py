@@ -10,34 +10,19 @@ from utils import get_client_ip
 
 logger = logging.getLogger("frontwall.shield.waf")
 
-MALICIOUS_BOT_PATTERNS = [
-    re.compile(r"sqlmap", re.IGNORECASE),
-    re.compile(r"nikto", re.IGNORECASE),
-    re.compile(r"nessus", re.IGNORECASE),
-    re.compile(r"masscan", re.IGNORECASE),
-    re.compile(r"dirbuster", re.IGNORECASE),
-    re.compile(r"gobuster", re.IGNORECASE),
-    re.compile(r"nmap", re.IGNORECASE),
-    re.compile(r"havij", re.IGNORECASE),
-    re.compile(r"w3af", re.IGNORECASE),
-    re.compile(r"acunetix", re.IGNORECASE),
+_BOT_WORDS = [
+    "sqlmap", "nikto", "nessus", "masscan", "dirbuster",
+    "gobuster", "nmap", "havij", "w3af", "acunetix",
 ]
+MALICIOUS_BOT_RE = re.compile("|".join(_BOT_WORDS), re.IGNORECASE)
 
-SUSPICIOUS_PATH_PATTERNS = [
-    re.compile(r"\.\./"),
-    re.compile(r"\.\.\\"),
-    re.compile(r"%2e%2e", re.IGNORECASE),
-    re.compile(r"%252e", re.IGNORECASE),
-    re.compile(r"/etc/passwd"),
-    re.compile(r"/proc/self"),
-    re.compile(r"wp-admin", re.IGNORECASE),
-    re.compile(r"wp-login\.php", re.IGNORECASE),
-    re.compile(r"xmlrpc\.php", re.IGNORECASE),
-    re.compile(r"wp-config", re.IGNORECASE),
-    re.compile(r"\.git/", re.IGNORECASE),
-    re.compile(r"\.env", re.IGNORECASE),
-    re.compile(r"phpmyadmin", re.IGNORECASE),
+_SUSPICIOUS_PATH_WORDS = [
+    r"\.\./", r"\.\.\\", r"%2e%2e", r"%252e",
+    r"/etc/passwd", r"/proc/self",
+    r"wp-admin", r"wp-login\.php", r"xmlrpc\.php", r"wp-config",
+    r"\.git/", r"\.env", r"phpmyadmin",
 ]
+SUSPICIOUS_PATH_RE = re.compile("|".join(_SUSPICIOUS_PATH_WORDS), re.IGNORECASE)
 
 BLOCKED_RESPONSE = Response(content="Forbidden", status_code=403, media_type="text/plain")
 GEO_BLOCKED_RESPONSE = Response(content="Access Denied", status_code=403, media_type="text/plain")
@@ -45,11 +30,20 @@ RATE_LIMITED_RESPONSE = Response(content="Too Many Requests", status_code=429, m
 PAYLOAD_TOO_LARGE = Response(content="Payload Too Large", status_code=413, media_type="text/plain")
 GENERIC_400 = Response(content="Bad Request", status_code=400, media_type="text/plain")
 
-STATIC_ASSET_EXTENSIONS = {
+STATIC_ASSET_EXTENSIONS = frozenset({
     ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif",
     ".ico", ".woff", ".woff2", ".ttf", ".eot", ".otf", ".map",
     ".pdf", ".mp4", ".webm", ".mp3", ".ogg",
-}
+})
+
+
+def _build_combined_re(base: re.Pattern, custom: list[str]) -> re.Pattern:
+    """Merge custom blocked patterns into the base regex as a single compiled alternation."""
+    if not custom:
+        return base
+    escaped = [re.escape(p) for p in custom]
+    combined = base.pattern + "|" + "|".join(escaped)
+    return re.compile(combined, re.IGNORECASE)
 
 
 class WAFMiddleware(BaseHTTPMiddleware):
@@ -60,26 +54,34 @@ class WAFMiddleware(BaseHTTPMiddleware):
         app,
         rate_limiter: RateLimiter | None = None,
         max_body_size: int = 1_048_576,
+        request_size_limit_enabled: bool = True,
         ip_whitelist: set[str] | None = None,
         ip_blacklist: set[str] | None = None,
         post_handler=None,
         block_bots: bool = True,
         block_suspicious_paths: bool = True,
         blocked_countries: set[str] | None = None,
+        custom_blocked_patterns: list[str] | None = None,
         site_id: str = "",
         event_collector=None,
     ):
         super().__init__(app)
-        self.rate_limiter = rate_limiter or RateLimiter()
+        self.rate_limiter = rate_limiter
         self.max_body_size = max_body_size
+        self.request_size_limit_enabled = request_size_limit_enabled
         self.ip_whitelist = ip_whitelist or set()
-        self.ip_blacklist = ip_blacklist or set()
+        self.ip_blacklist = frozenset(ip_blacklist) if ip_blacklist else frozenset()
         self.post_handler = post_handler
         self.block_bots = block_bots
         self.block_suspicious_paths = block_suspicious_paths
-        self.blocked_countries = blocked_countries or set()
+        self.blocked_countries = frozenset(blocked_countries) if blocked_countries else frozenset()
         self.site_id = site_id
         self.collector = event_collector
+
+        self._suspicious_re = _build_combined_re(SUSPICIOUS_PATH_RE, custom_blocked_patterns or [])
+
+        self._has_ip_checks = bool(self.ip_blacklist) or bool(self.ip_whitelist)
+        self._has_geo_checks = bool(self.blocked_countries)
 
     def _emit(self, event_type, severity, client_ip, path, method, user_agent, details=None, country=None):
         if self.collector:
@@ -97,42 +99,47 @@ class WAFMiddleware(BaseHTTPMiddleware):
             )
 
     async def dispatch(self, request: Request, call_next):
-        client_ip = get_client_ip(request)
-        user_agent = request.headers.get("user-agent", "")
         path = request.url.path
         method = request.method
 
-        if client_ip in self.ip_blacklist:
-            logger.warning("Blocked blacklisted IP: %s", client_ip)
+        dot_idx = path.rfind(".")
+        is_static = dot_idx != -1 and path[dot_idx:].lower() in STATIC_ASSET_EXTENSIONS
+
+        if is_static and method == "GET" and not self._has_ip_checks and not self._has_geo_checks:
+            return await call_next(request)
+
+        client_ip = get_client_ip(request)
+
+        if self.ip_blacklist and client_ip in self.ip_blacklist:
+            user_agent = request.headers.get("user-agent", "")
             self._emit("ip_blacklisted", "critical", client_ip, path, method, user_agent)
             return BLOCKED_RESPONSE
 
-        if self.ip_whitelist and client_ip not in self.ip_whitelist:
-            pass
-
-        if self.blocked_countries:
+        if self._has_geo_checks:
             country = get_country_code(request, client_ip)
             if country and country in self.blocked_countries:
-                logger.warning("Blocked request from country %s (IP: %s)", country, client_ip)
+                user_agent = request.headers.get("user-agent", "")
                 self._emit(
                     "country_blocked", "high", client_ip, path, method, user_agent,
                     {"country": country}, country=country,
                 )
                 return GEO_BLOCKED_RESPONSE
 
-        if self.block_bots and self._is_malicious_bot(user_agent):
-            logger.warning("Blocked malicious bot: %s (IP: %s)", user_agent, client_ip)
+        if is_static:
+            return await call_next(request)
+
+        user_agent = request.headers.get("user-agent", "")
+
+        if self.block_bots and MALICIOUS_BOT_RE.search(user_agent):
             self._emit("bot_blocked", "high", client_ip, path, method, user_agent, {"user_agent": user_agent})
             return BLOCKED_RESPONSE
 
-        is_static = any(path.lower().endswith(ext) for ext in STATIC_ASSET_EXTENSIONS)
-        if not is_static and self.rate_limiter:
+        if self.rate_limiter:
             if not await self.rate_limiter.check_global(client_ip):
-                logger.warning("Rate limit exceeded for IP: %s", client_ip)
                 self._emit("rate_limited", "medium", client_ip, path, method, user_agent)
                 return RATE_LIMITED_RESPONSE
 
-        if self.block_suspicious_paths and self._is_suspicious_path(path):
+        if self.block_suspicious_paths and self._suspicious_re.search(path):
             post_allowed = (
                 method == "POST"
                 and self.post_handler
@@ -142,37 +149,22 @@ class WAFMiddleware(BaseHTTPMiddleware):
                 )
             )
             if not post_allowed:
-                logger.warning("Blocked suspicious path: %s (IP: %s)", path, client_ip)
                 self._emit("suspicious_path", "high", client_ip, path, method, user_agent, {"path": path})
                 return BLOCKED_RESPONSE
 
-        query = str(request.url.query)
-        if self.block_suspicious_paths and query and self._is_suspicious_path(query):
-            logger.warning("Blocked suspicious query: %s (IP: %s)", query, client_ip)
+        query = request.url.query
+        if query and self.block_suspicious_paths and self._suspicious_re.search(query):
             self._emit("suspicious_query", "high", client_ip, path, method, user_agent, {"query": query})
             return BLOCKED_RESPONSE
 
-        content_length = request.headers.get("content-length")
-        if content_length:
-            try:
-                if int(content_length) > self.max_body_size:
-                    logger.warning("Blocked oversized request: %s bytes (IP: %s)", content_length, client_ip)
-                    self._emit("payload_too_large", "medium", client_ip, path, method, user_agent, {"size": content_length})
-                    return PAYLOAD_TOO_LARGE
-            except (ValueError, OverflowError):
-                return GENERIC_400
+        if self.request_size_limit_enabled:
+            content_length = request.headers.get("content-length")
+            if content_length:
+                try:
+                    if int(content_length) > self.max_body_size:
+                        self._emit("payload_too_large", "medium", client_ip, path, method, user_agent, {"size": content_length})
+                        return PAYLOAD_TOO_LARGE
+                except (ValueError, OverflowError):
+                    return GENERIC_400
 
-        response = await call_next(request)
-        return response
-
-    def _is_malicious_bot(self, user_agent: str) -> bool:
-        for pattern in MALICIOUS_BOT_PATTERNS:
-            if pattern.search(user_agent):
-                return True
-        return False
-
-    def _is_suspicious_path(self, path: str) -> bool:
-        for pattern in SUSPICIOUS_PATH_PATTERNS:
-            if pattern.search(path):
-                return True
-        return False
+        return await call_next(request)

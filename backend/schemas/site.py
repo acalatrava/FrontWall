@@ -53,6 +53,9 @@ class SiteCreate(BaseModel):
     block_bots: bool = True
     block_suspicious_paths: bool = True
     max_body_size: int = 1_048_576
+    request_size_limit_enabled: bool = True
+    sanitization_enabled: bool = True
+    custom_blocked_patterns: str = ""
     ip_whitelist: str = ""
     ip_blacklist: str = ""
     blocked_countries: str = ""
@@ -180,6 +183,9 @@ class SiteUpdate(BaseModel):
     block_bots: bool | None = None
     block_suspicious_paths: bool | None = None
     max_body_size: int | None = None
+    request_size_limit_enabled: bool | None = None
+    sanitization_enabled: bool | None = None
+    custom_blocked_patterns: str | None = None
     ip_whitelist: str | None = None
     ip_blacklist: str | None = None
     blocked_countries: str | None = None
@@ -258,6 +264,9 @@ class SiteResponse(BaseModel):
     block_bots: bool
     block_suspicious_paths: bool
     max_body_size: int
+    request_size_limit_enabled: bool
+    sanitization_enabled: bool
+    custom_blocked_patterns: str
     ip_whitelist: str
     ip_blacklist: str
     blocked_countries: str

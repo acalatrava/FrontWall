@@ -257,6 +257,41 @@ Additional security measures:
 | GeoIP | Cloudflare `CF-IPCountry` header, MaxMind GeoLite2 (optional) |
 | Deployment | Docker, Docker Compose |
 
+## Performance
+
+The shield server is optimized for high throughput and sub-millisecond latencies on the hot path. These optimizations target the request path when serving cached static content.
+
+### Pre-computed cache index
+
+At deploy time, the entire cache directory is scanned once and all files are indexed in memory. Lookups are O(1) dict access — **zero filesystem syscalls** during request handling. Files under 512 KB are loaded entirely into RAM (up to 256 MB budget) so responses are served without touching disk.
+
+### Hot response cache
+
+The top 2048 most-requested paths have their fully-built `Response` objects cached. A second request for the same path is a single dict lookup and object return — no file resolution, no header building, no body construction. Hit rate and memory usage are visible at `GET /__cache_stats` on the shield port.
+
+### WAF fast-path
+
+Static asset requests (`.css`, `.js`, `.png`, `.woff2`, etc.) skip most WAF checks when no IP whitelist or geo-blocking is configured. No bot regex, no rate limiter, no path scanning — these requests are harmless cached files. When IP/geo checks are active, static assets only execute those checks and then exit.
+
+### Single-pass regex
+
+Instead of iterating 10+ individual compiled regexes for bot detection and 13+ for path checking, all patterns are merged into a single compiled alternation. The regex engine performs one pass instead of many, reducing CPU time for non-fast-path requests.
+
+### Sharded rate limiter
+
+The rate limiter uses 16 shards, each with its own lock. IPs are hashed to shards, so concurrent requests from different IPs never contend. Under load, this eliminates the global lock bottleneck that previously serialized all rate-limit checks.
+
+### Other optimizations
+
+- **Pre-computed security headers** — Header key/value pairs are built once at init time as a tuple; per-request overhead is a loop over fixed-size data.
+- **Path safety** — Directory traversal check uses fast string containment (`".." in path`) instead of splitting and iterating segments.
+- **Extension checks** — Uses `path.rfind(".")` and `frozenset` membership instead of `Path()` object creation.
+- **Immutable sets** — All static lookup sets (`BLOCKED_EXTENSIONS`, `ip_blacklist`, etc.) are `frozenset` for faster `in` checks.
+
+### Expected impact
+
+For a cached `.css` file that was already served once: before optimizations, the hot path took ~350–1400 µs (filesystem stat calls, lock contention, regex iteration, disk read). After: ~5 µs (dict lookup + cached object return). That is a **70–280× speedup** on the hot path.
+
 ## Project structure
 
 ```

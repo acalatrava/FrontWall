@@ -41,6 +41,9 @@ def _add_missing_columns(conn) -> None:
     _ensure_column(conn, inspector, "sites", "blocked_countries", "TEXT DEFAULT ''")
     _ensure_column(conn, inspector, "post_rules", "allowed_actions", "TEXT")
     _ensure_column(conn, inspector, "sites", "learned_csp_origins", "TEXT DEFAULT ''")
+    _ensure_column(conn, inspector, "sites", "request_size_limit_enabled", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "sites", "sanitization_enabled", "BOOLEAN DEFAULT 1")
+    _ensure_column(conn, inspector, "sites", "custom_blocked_patterns", "TEXT DEFAULT ''")
 
     _ensure_column(conn, inspector, "admin_users", "email", "VARCHAR(320)")
     _ensure_column(conn, inspector, "admin_users", "role", "VARCHAR(20) DEFAULT 'admin'")

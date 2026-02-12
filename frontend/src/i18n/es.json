@@ -256,9 +256,16 @@
       "whitelist": "Lista blanca",
       "whitelistPlaceholder": "1.2.3.4, 5.6.7.8",
       "whitelistHint": "IPs separadas por coma. Dejar vacío para permitir todas.",
+      "whitelistActiveDesc": "{count} IP(s) en lista blanca — solo estas IPs pueden acceder al escudo",
+      "whitelistEmptyDesc": "Sin lista blanca — todas las IPs están permitidas",
       "blacklist": "Lista negra",
       "blacklistPlaceholder": "10.20.30.40",
-      "blacklistHint": "IPs separadas por coma para bloquear."
+      "blacklistHint": "IPs separadas por coma para bloquear.",
+      "blacklistActiveDesc": "{count} IP(s) bloqueadas permanentemente",
+      "blacklistEmptyDesc": "No hay IPs bloqueadas actualmente",
+      "noRestriction": "Abierto",
+      "noneBlocked": "Ninguna bloqueada",
+      "blocking": "Bloqueando {count}"
     },
     "country": {
       "title": "Bloqueo por país",
@@ -273,11 +280,16 @@
     },
     "blockedPatterns": {
       "title": "Patrones bloqueados",
-      "description": "Las peticiones que coincidan con estos patrones en la ruta o query string se bloquean automáticamente."
+      "description": "Las peticiones que coincidan con estos patrones en la ruta o query string se bloquean automáticamente.",
+      "builtIn": "Incorporados (siempre activos)",
+      "custom": "Patrones personalizados",
+      "noCustom": "No hay patrones personalizados configurados.",
+      "addPlaceholder": "ej. /ruta-secreta, /backup"
     },
     "sanitization": {
       "title": "Sanitización de entrada",
       "description": "Todos los datos POST de formularios se procesan a través de múltiples capas de sanitización antes de reenviarlos.",
+      "disabledWarning": "La sanitización de entrada está desactivada. Los datos POST se reenviarán a WordPress sin validación. Actívala a menos que tengas una razón específica para no hacerlo.",
       "fieldWhitelist": "Lista blanca de campos",
       "fieldWhitelistDesc": "Solo los campos explícitamente declarados pasan; los desconocidos se eliminan",
       "unicodeNorm": "Normalización Unicode",

@@ -1,10 +1,11 @@
 import time
 import asyncio
 import logging
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 logger = logging.getLogger("frontwall.shield.rate_limiter")
+
+SHARD_COUNT = 16
 
 
 @dataclass
@@ -29,8 +30,28 @@ class TokenBucket:
         return False
 
 
+class _Shard:
+    """A single shard holding a subset of IP buckets behind its own lock."""
+
+    __slots__ = ("buckets", "lock")
+
+    def __init__(self):
+        self.buckets: dict[str, TokenBucket] = {}
+        self.lock = asyncio.Lock()
+
+    def cleanup(self, stale_threshold: float) -> None:
+        self.buckets = {
+            ip: b for ip, b in self.buckets.items()
+            if b.last_refill > stale_threshold
+        }
+
+
 class RateLimiter:
-    """Per-IP and per-endpoint token bucket rate limiter."""
+    """Per-IP token bucket rate limiter with sharded locks.
+
+    Instead of a single global lock, IPs are hashed into N shards
+    so concurrent requests to different IPs never contend.
+    """
 
     def __init__(
         self,
@@ -41,21 +62,26 @@ class RateLimiter:
         self.global_capacity = global_requests
         self.global_refill_rate = global_requests / global_window
         self.cleanup_interval = cleanup_interval
-
-        self._buckets: dict[str, TokenBucket] = {}
-        self._endpoint_buckets: dict[str, dict[str, TokenBucket]] = defaultdict(dict)
-        self._lock = asyncio.Lock()
         self._last_cleanup = time.monotonic()
 
+        self._shards = [_Shard() for _ in range(SHARD_COUNT)]
+        self._endpoint_shards: dict[str, list[_Shard]] = {}
+
+    def _shard_for(self, ip: str) -> _Shard:
+        return self._shards[hash(ip) % SHARD_COUNT]
+
     async def check_global(self, client_ip: str) -> bool:
-        async with self._lock:
-            await self._maybe_cleanup()
-            if client_ip not in self._buckets:
-                self._buckets[client_ip] = TokenBucket(
+        shard = self._shard_for(client_ip)
+        async with shard.lock:
+            self._maybe_cleanup_shard(shard)
+            bucket = shard.buckets.get(client_ip)
+            if bucket is None:
+                bucket = TokenBucket(
                     capacity=self.global_capacity,
                     refill_rate=self.global_refill_rate,
                 )
-            return self._buckets[client_ip].consume()
+                shard.buckets[client_ip] = bucket
+            return bucket.consume()
 
     async def check_endpoint(
         self,
@@ -64,30 +90,28 @@ class RateLimiter:
         max_requests: int = 10,
         window_seconds: int = 60,
     ) -> bool:
-        async with self._lock:
-            ep_buckets = self._endpoint_buckets[endpoint]
-            if client_ip not in ep_buckets:
-                ep_buckets[client_ip] = TokenBucket(
+        if endpoint not in self._endpoint_shards:
+            self._endpoint_shards[endpoint] = [_Shard() for _ in range(SHARD_COUNT)]
+        shards = self._endpoint_shards[endpoint]
+        shard = shards[hash(client_ip) % SHARD_COUNT]
+        async with shard.lock:
+            bucket = shard.buckets.get(client_ip)
+            if bucket is None:
+                bucket = TokenBucket(
                     capacity=max_requests,
                     refill_rate=max_requests / window_seconds,
                 )
-            return ep_buckets[client_ip].consume()
+                shard.buckets[client_ip] = bucket
+            return bucket.consume()
 
-    async def _maybe_cleanup(self):
+    def _maybe_cleanup_shard(self, shard: _Shard) -> None:
         now = time.monotonic()
         if now - self._last_cleanup < self.cleanup_interval:
             return
         self._last_cleanup = now
-
-        stale_threshold = now - self.cleanup_interval
-        self._buckets = {
-            ip: bucket for ip, bucket in self._buckets.items()
-            if bucket.last_refill > stale_threshold
-        }
-        for endpoint in list(self._endpoint_buckets.keys()):
-            self._endpoint_buckets[endpoint] = {
-                ip: bucket for ip, bucket in self._endpoint_buckets[endpoint].items()
-                if bucket.last_refill > stale_threshold
-            }
-            if not self._endpoint_buckets[endpoint]:
-                del self._endpoint_buckets[endpoint]
+        stale = now - self.cleanup_interval
+        for s in self._shards:
+            s.cleanup(stale)
+        for ep_shards in self._endpoint_shards.values():
+            for s in ep_shards:
+                s.cleanup(stale)

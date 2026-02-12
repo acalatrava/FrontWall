@@ -37,6 +37,7 @@ class PostHandler:
         self.internal_url = internal_url.rstrip("/") if internal_url else None
         self.override_host = override_host
         self.learn_mode = False
+        self.sanitization_enabled = True
         self.learned_posts: list[dict] = []
         self._max_learned = 500
         self.collector = event_collector
@@ -186,13 +187,15 @@ class PostHandler:
             return self._success_response(rule)
 
         field_rules = rule.get("fields", [])
-        sanitized_data, errors = self.sanitizer.sanitize_and_validate(raw_data, field_rules)
-
-        if errors:
-            return JSONResponse(
-                content={"status": "error", "errors": errors},
-                status_code=422,
-            )
+        if self.sanitization_enabled:
+            sanitized_data, errors = self.sanitizer.sanitize_and_validate(raw_data, field_rules)
+            if errors:
+                return JSONResponse(
+                    content={"status": "error", "errors": errors},
+                    status_code=422,
+                )
+        else:
+            sanitized_data = raw_data
 
         forward_url = self._build_forward_url(path)
         try:

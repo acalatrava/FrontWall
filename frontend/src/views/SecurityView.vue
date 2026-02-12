@@ -72,12 +72,12 @@
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div v-for="feature in readOnlyWafFeatures" :key="feature.name" class="flex items-start gap-3 bg-gray-800/50 rounded-lg p-4">
-                <span class="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs bg-green-500/20 text-green-400">&#10003;</span>
+              <div v-for="feature in readOnlyWafFeatures" :key="feature.name" class="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
                 <div>
                   <div class="text-sm font-medium text-white">{{ feature.name }}</div>
                   <div class="text-xs text-gray-400 mt-0.5">{{ feature.description }}</div>
                 </div>
+                <DisabledToggle />
               </div>
             </div>
           </div>
@@ -127,27 +127,41 @@
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
           <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.ipAccess.title') }}</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-gray-800/50 rounded-lg p-4">
-              <h3 class="text-sm font-medium text-gray-300 mb-2">{{ t('security.ipAccess.whitelist') }}</h3>
+            <div class="rounded-lg p-4" :class="whitelistActive ? 'bg-emerald-900/20 border border-emerald-700/30' : 'bg-gray-800/50'">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="text-sm font-medium" :class="whitelistActive ? 'text-emerald-300' : 'text-gray-300'">{{ t('security.ipAccess.whitelist') }}</h3>
+                <span v-if="whitelistActive" class="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px] font-semibold uppercase">{{ t('common.active') }}</span>
+                <span v-else class="px-1.5 py-0.5 bg-gray-700/50 text-gray-500 rounded text-[10px] font-semibold uppercase">{{ t('security.ipAccess.noRestriction') }}</span>
+              </div>
+              <p class="text-xs mb-2" :class="whitelistActive ? 'text-emerald-400/70' : 'text-gray-500'">
+                {{ whitelistActive ? t('security.ipAccess.whitelistActiveDesc', { count: whitelistCount }) : t('security.ipAccess.whitelistEmptyDesc') }}
+              </p>
               <div class="flex gap-2">
                 <input
                   v-model="ipWhitelistInput"
                   :placeholder="t('security.ipAccess.whitelistPlaceholder')"
                   class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <button @click="saveSetting('ip_whitelist', ipWhitelistInput)" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">Save</button>
+                <button @click="saveSetting('ip_whitelist', ipWhitelistInput)" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">{{ t('common.save') }}</button>
               </div>
               <p class="text-xs text-gray-500 mt-1.5">{{ t('security.ipAccess.whitelistHint') }}</p>
             </div>
-            <div class="bg-gray-800/50 rounded-lg p-4">
-              <h3 class="text-sm font-medium text-gray-300 mb-2">{{ t('security.ipAccess.blacklist') }}</h3>
+            <div class="rounded-lg p-4" :class="blacklistActive ? 'bg-red-900/20 border border-red-700/30' : 'bg-gray-800/50'">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="text-sm font-medium" :class="blacklistActive ? 'text-red-300' : 'text-gray-300'">{{ t('security.ipAccess.blacklist') }}</h3>
+                <span v-if="blacklistActive" class="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] font-semibold uppercase">{{ t('security.ipAccess.blocking', { count: blacklistCount }) }}</span>
+                <span v-else class="px-1.5 py-0.5 bg-gray-700/50 text-gray-500 rounded text-[10px] font-semibold uppercase">{{ t('security.ipAccess.noneBlocked') }}</span>
+              </div>
+              <p class="text-xs mb-2" :class="blacklistActive ? 'text-red-400/70' : 'text-gray-500'">
+                {{ blacklistActive ? t('security.ipAccess.blacklistActiveDesc', { count: blacklistCount }) : t('security.ipAccess.blacklistEmptyDesc') }}
+              </p>
               <div class="flex gap-2">
                 <input
                   v-model="ipBlacklistInput"
                   :placeholder="t('security.ipAccess.blacklistPlaceholder')"
                   class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <button @click="saveSetting('ip_blacklist', ipBlacklistInput)" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">Save</button>
+                <button @click="saveSetting('ip_blacklist', ipBlacklistInput)" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">{{ t('common.save') }}</button>
               </div>
               <p class="text-xs text-gray-500 mt-1.5">{{ t('security.ipAccess.blacklistHint') }}</p>
             </div>
@@ -194,8 +208,11 @@
 
         <!-- Max Body Size -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.bodySize.title') }}</h2>
-          <div class="bg-gray-800/50 rounded-lg p-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold text-white">{{ t('security.bodySize.title') }}</h2>
+            <ToggleSwitch :checked="selectedSite.request_size_limit_enabled" @update="v => saveSetting('request_size_limit_enabled', v)" color="green" />
+          </div>
+          <div v-if="selectedSite.request_size_limit_enabled" class="bg-gray-800/50 rounded-lg p-4">
             <label class="text-gray-400 text-xs block mb-2">{{ t('security.bodySize.label') }}</label>
             <div class="flex gap-2 items-center">
               <input
@@ -208,26 +225,56 @@
           </div>
         </div>
 
-        <!-- Blocked Patterns (read-only) -->
+        <!-- Blocked Patterns -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
           <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.blockedPatterns.title') }}</h2>
           <p class="text-sm text-gray-400 mb-4">
             {{ t('security.blockedPatterns.description') }}
           </p>
-          <div class="flex flex-wrap gap-2">
-            <span v-for="pattern in blockedPatterns" :key="pattern" class="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-mono">
-              {{ pattern }}
-            </span>
+          <div class="mb-4">
+            <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{{ t('security.blockedPatterns.builtIn') }}</h3>
+            <div class="flex flex-wrap gap-2">
+              <span v-for="pattern in builtInBlockedPatterns" :key="pattern" class="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-mono">
+                {{ pattern }}
+              </span>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{{ t('security.blockedPatterns.custom') }}</h3>
+            <div v-if="customPatterns.length" class="flex flex-wrap gap-2 mb-3">
+              <span
+                v-for="(pattern, idx) in customPatterns"
+                :key="idx"
+                class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-500/10 text-orange-400 rounded-lg text-xs font-mono cursor-pointer hover:bg-orange-500/20 transition-colors"
+                @click="removeCustomPattern(idx)"
+              >
+                {{ pattern }}
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </span>
+            </div>
+            <p v-else class="text-xs text-gray-500 mb-3">{{ t('security.blockedPatterns.noCustom') }}</p>
+            <div class="flex gap-2">
+              <input
+                v-model="newPatternInput"
+                @keydown.enter="addCustomPattern"
+                :placeholder="t('security.blockedPatterns.addPlaceholder')"
+                class="flex-1 max-w-sm px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button @click="addCustomPattern" :disabled="!newPatternInput.trim()" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">{{ t('common.add') }}</button>
+            </div>
           </div>
         </div>
 
-        <!-- Input Sanitization (read-only) -->
+        <!-- Input Sanitization -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6">
-          <h2 class="text-lg font-semibold text-white mb-4">{{ t('security.sanitization.title') }}</h2>
-          <p class="text-sm text-gray-400 mb-4">
-            {{ t('security.sanitization.description') }}
-          </p>
-          <div class="space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-lg font-semibold text-white">{{ t('security.sanitization.title') }}</h2>
+              <p class="text-sm text-gray-400 mt-1">{{ t('security.sanitization.description') }}</p>
+            </div>
+            <ToggleSwitch :checked="selectedSite.sanitization_enabled" @update="v => saveSetting('sanitization_enabled', v)" color="green" />
+          </div>
+          <div v-if="selectedSite.sanitization_enabled" class="space-y-3">
             <div v-for="step in sanitizationSteps" :key="step.order" class="flex items-start gap-3">
               <span class="mt-1 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold">{{ step.order }}</span>
               <div>
@@ -235,6 +282,9 @@
                 <div class="text-xs text-gray-400 mt-0.5">{{ step.description }}</div>
               </div>
             </div>
+          </div>
+          <div v-else class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mt-2">
+            <p class="text-xs text-amber-300">{{ t('security.sanitization.disabledWarning') }}</p>
           </div>
         </div>
 
@@ -265,6 +315,7 @@ const ipBlacklistInput = ref('')
 const countrySearch = ref('')
 const countries = ref([])
 const highRiskCountries = ref([])
+const newPatternInput = ref('')
 
 const ToggleSwitch = {
   props: { checked: Boolean, color: { type: String, default: 'blue' } },
@@ -282,6 +333,18 @@ const ToggleSwitch = {
           }),
           h('div', { class: `w-11 h-6 bg-gray-700 rounded-full ${colors[props.color] || colors.blue} transition-colors` }),
           h('div', { class: 'absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5' }),
+        ]),
+      ])
+  },
+}
+
+const DisabledToggle = {
+  setup() {
+    return () =>
+      h('div', { class: 'flex items-center flex-shrink-0 opacity-60', title: 'Always enabled' }, [
+        h('div', { class: 'relative' }, [
+          h('div', { class: 'w-11 h-6 bg-green-500/70 rounded-full' }),
+          h('div', { class: 'absolute left-[22px] top-0.5 w-5 h-5 bg-white/80 rounded-full' }),
         ]),
       ])
   },
@@ -320,6 +383,49 @@ function removeCountry(code) {
 function loadHighRisk() {
   const merged = new Set([...selectedCountries.value, ...highRiskCountries.value])
   saveSetting('blocked_countries', [...merged].join(','))
+}
+
+const whitelistActive = computed(() => {
+  const s = selectedSite.value
+  return s && s.ip_whitelist && s.ip_whitelist.trim().length > 0
+})
+const whitelistCount = computed(() => {
+  const s = selectedSite.value
+  if (!s || !s.ip_whitelist) return 0
+  return s.ip_whitelist.split(',').filter(ip => ip.trim()).length
+})
+const blacklistActive = computed(() => {
+  const s = selectedSite.value
+  return s && s.ip_blacklist && s.ip_blacklist.trim().length > 0
+})
+const blacklistCount = computed(() => {
+  const s = selectedSite.value
+  if (!s || !s.ip_blacklist) return 0
+  return s.ip_blacklist.split(',').filter(ip => ip.trim()).length
+})
+
+const customPatterns = computed(() => {
+  const s = selectedSite.value
+  if (!s || !s.custom_blocked_patterns) return []
+  return s.custom_blocked_patterns.split('\n').filter(p => p.trim())
+})
+
+function addCustomPattern() {
+  const val = newPatternInput.value.trim()
+  if (!val) return
+  const current = customPatterns.value
+  if (current.includes(val)) {
+    newPatternInput.value = ''
+    return
+  }
+  const updated = [...current, val].join('\n')
+  newPatternInput.value = ''
+  saveSetting('custom_blocked_patterns', updated)
+}
+
+function removeCustomPattern(idx) {
+  const updated = customPatterns.value.filter((_, i) => i !== idx).join('\n')
+  saveSetting('custom_blocked_patterns', updated)
 }
 
 watch(sites, (val) => {
@@ -389,7 +495,7 @@ const securityHeaders = [
   { name: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
 ]
 
-const blockedPatterns = [
+const builtInBlockedPatterns = [
   'wp-admin', 'wp-login.php', 'xmlrpc.php', 'wp-config',
   '.env', '.git/', 'phpmyadmin', 'wp-includes/',
   '../', '%2e%2e', '/etc/passwd', '/proc/self',

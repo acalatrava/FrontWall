@@ -112,6 +112,10 @@ async def deploy_shield(site_id: str) -> int:
         block_bots = site.block_bots
         block_suspicious_paths = site.block_suspicious_paths
         max_body_size = site.max_body_size
+        request_size_limit_enabled = site.request_size_limit_enabled
+        sanitization_enabled = site.sanitization_enabled
+        custom_blocked_patterns_raw = site.custom_blocked_patterns or ""
+        custom_blocked_patterns = [p.strip() for p in custom_blocked_patterns_raw.split("\n") if p.strip()]
         ip_whitelist = _parse_ip_list(site.ip_whitelist)
         ip_blacklist = _parse_ip_list(site.ip_blacklist)
         blocked_countries = _parse_ip_list(site.blocked_countries)
@@ -188,14 +192,18 @@ async def deploy_shield(site_id: str) -> int:
             return await _bypass_proxy_request(bypass, request, path)
         return await post_handler.handle_post(request)
 
+    post_handler.sanitization_enabled = sanitization_enabled
+
     if waf_enabled:
         shield_app.add_middleware(
             WAFMiddleware,
             rate_limiter=rate_limiter,
             max_body_size=max_body_size,
+            request_size_limit_enabled=request_size_limit_enabled,
             ip_whitelist=ip_whitelist,
             ip_blacklist=ip_blacklist,
             blocked_countries=blocked_countries,
+            custom_blocked_patterns=custom_blocked_patterns,
             post_handler=post_handler,
             block_bots=block_bots,
             block_suspicious_paths=block_suspicious_paths,

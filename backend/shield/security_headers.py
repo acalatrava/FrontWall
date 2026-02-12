@@ -12,22 +12,18 @@ DEFAULT_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin",
 }
 
-STATIC_CACHE_HEADERS = {
-    "Cache-Control": "public, max-age=3600, must-revalidate",
-}
-
-IMMUTABLE_CACHE_HEADERS = {
-    "Cache-Control": "public, max-age=31536000, immutable",
-}
-
-IMMUTABLE_EXTENSIONS = {
+IMMUTABLE_EXTENSIONS = frozenset({
     ".css", ".js", ".woff", ".woff2", ".ttf", ".eot", ".otf",
     ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico",
-}
+})
+
+HEADERS_TO_STRIP = ("Server", "X-Powered-By")
 
 
 class CspState:
     """Shared mutable state for the CSP header, readable by the middleware."""
+
+    __slots__ = ("csp", "learn_mode")
 
     def __init__(self, csp: str | None = None):
         self.csp = csp
@@ -37,50 +33,35 @@ class CspState:
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Injects hardened security headers into every response.
 
-    When learn_mode is active on the shared CspState, the CSP is sent as
-    Content-Security-Policy-Report-Only with a report-uri so the browser
-    reports blocked domains instead of blocking them.
+    Pre-computes header tuples at init time so the per-request overhead
+    is just a loop over a fixed-size list instead of dict lookups.
     """
 
     def __init__(self, app, csp_state: CspState | None = None, custom_headers: dict[str, str] | None = None):
         super().__init__(app)
-        self.base_headers = {**DEFAULT_HEADERS}
-        self.csp_state = csp_state or CspState()
+        merged = {**DEFAULT_HEADERS}
         if custom_headers:
-            self.base_headers.update(custom_headers)
+            merged.update(custom_headers)
+        self._header_pairs = tuple(merged.items())
+        self.csp_state = csp_state or CspState()
 
     async def dispatch(self, request: Request, call_next):
         response: Response = await call_next(request)
 
-        for key, value in self.base_headers.items():
-            response.headers[key] = value
+        rh = response.headers
+        for key, value in self._header_pairs:
+            rh[key] = value
 
         csp = self.csp_state.csp
         if csp:
             if self.csp_state.learn_mode:
-                response.headers["Content-Security-Policy-Report-Only"] = csp + "; report-uri /__csp_report"
-                if "Content-Security-Policy" in response.headers:
-                    del response.headers["Content-Security-Policy"]
+                rh["Content-Security-Policy-Report-Only"] = csp + "; report-uri /__csp_report"
+                rh.pop("Content-Security-Policy", None)
             else:
-                response.headers["Content-Security-Policy"] = csp
-                if "Content-Security-Policy-Report-Only" in response.headers:
-                    del response.headers["Content-Security-Policy-Report-Only"]
+                rh["Content-Security-Policy"] = csp
+                rh.pop("Content-Security-Policy-Report-Only", None)
 
-        if "Server" in response.headers:
-            del response.headers["Server"]
-        if "X-Powered-By" in response.headers:
-            del response.headers["X-Powered-By"]
-
-        path = request.url.path
-        is_ok = 200 <= response.status_code < 400
-        if is_ok:
-            if any(path.endswith(ext) for ext in IMMUTABLE_EXTENSIONS):
-                for k, v in IMMUTABLE_CACHE_HEADERS.items():
-                    response.headers[k] = v
-            else:
-                for k, v in STATIC_CACHE_HEADERS.items():
-                    response.headers[k] = v
-        else:
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        for h in HEADERS_TO_STRIP:
+            rh.pop(h, None)
 
         return response

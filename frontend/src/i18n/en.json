@@ -255,9 +255,16 @@
       "whitelist": "Whitelist",
       "whitelistPlaceholder": "1.2.3.4, 5.6.7.8",
       "whitelistHint": "Comma-separated IPs. Leave empty to allow all.",
+      "whitelistActiveDesc": "{count} IP(s) whitelisted — only these IPs can access the shield",
+      "whitelistEmptyDesc": "No whitelist configured — all IPs are allowed",
       "blacklist": "Blacklist",
       "blacklistPlaceholder": "10.20.30.40",
-      "blacklistHint": "Comma-separated IPs to block."
+      "blacklistHint": "Comma-separated IPs to block.",
+      "blacklistActiveDesc": "{count} IP(s) are permanently blocked",
+      "blacklistEmptyDesc": "No IPs are currently blocked",
+      "noRestriction": "Open",
+      "noneBlocked": "None blocked",
+      "blocking": "Blocking {count}"
     },
     "country": {
       "title": "Country Blocking",
@@ -272,11 +279,16 @@
     },
     "blockedPatterns": {
       "title": "Blocked Patterns",
-      "description": "Requests matching these patterns in the path or query string are automatically blocked."
+      "description": "Requests matching these patterns in the path or query string are automatically blocked.",
+      "builtIn": "Built-in (always active)",
+      "custom": "Custom patterns",
+      "noCustom": "No custom patterns configured.",
+      "addPlaceholder": "e.g. /secret-path, /backup"
     },
     "sanitization": {
       "title": "Input Sanitization",
       "description": "All POST form data is processed through multiple sanitization layers before forwarding.",
+      "disabledWarning": "Input sanitization is disabled. POST data will be forwarded to WordPress without validation. Enable this unless you have a specific reason not to.",
       "fieldWhitelist": "Field Whitelist",
       "fieldWhitelistDesc": "Only explicitly declared fields are allowed through; unknown fields are stripped",
       "unicodeNorm": "Unicode Normalization",
