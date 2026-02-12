@@ -73,7 +73,7 @@ async def _bypass_proxy_request(bp: BypassState, request: Request, path: str) ->
     resp_headers = {}
     for k, v in resp.headers.multi_items():
         kl = k.lower()
-        if kl not in BYPASS_HOP_HEADERS and kl != "content-encoding":
+        if kl not in BYPASS_HOP_HEADERS and kl not in ("content-encoding", "content-length"):
             resp_headers[k] = v
     resp_headers["x-frontwall-bypass"] = "true"
 
