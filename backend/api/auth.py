@@ -24,6 +24,7 @@ from schemas.auth import (
     InviteRequest, AcceptInviteRequest,
     ForgotPasswordRequest, ResetPasswordRequest,
     UserResponse, UserUpdateRequest, PasskeyRegisterRequest,
+    ChangePasswordRequest,
 )
 from services.security_collector import collector as security_collector
 from services.email_service import send_invite, send_password_reset
@@ -413,6 +414,21 @@ async def me(user: AdminUser = Depends(get_current_user), db: AsyncSession = Dep
         "has_passkey": (pk_count.scalar() or 0) > 0,
         "created_at": user.created_at.isoformat(),
     }
+
+
+# ── Change Password ──
+
+@router.post("/change-password")
+async def change_password(
+    data: ChangePasswordRequest,
+    user: AdminUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not user.password_hash or not _verify_password(data.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    user.password_hash = _hash_password(data.new_password)
+    await db.commit()
+    return {"status": "password_changed"}
 
 
 # ── Invite ──

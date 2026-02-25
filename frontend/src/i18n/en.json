@@ -412,5 +412,27 @@
       "send": "Send Invite",
       "sending": "Sending..."
     }
+  },
+  "profile": {
+    "title": "Profile",
+    "accountInfo": "Account Information",
+    "emailLabel": "Email",
+    "roleLabel": "Role",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "passwordHint": "Min 10 chars, at least 1 uppercase, 1 lowercase, 1 digit",
+    "savePassword": "Update Password",
+    "saving": "Saving...",
+    "passwordsNoMatch": "New passwords do not match",
+    "passwordChanged": "Password updated successfully",
+    "changeFailed": "Failed to change password",
+    "yourPasskeys": "Your Passkeys",
+    "addPasskey": "+ Add Passkey",
+    "registering": "Registering...",
+    "noPasskeys": "No passkeys registered. Add a passkey for passwordless sign-in.",
+    "registered": "Registered",
+    "lastUsed": "Last used"
   }
 }

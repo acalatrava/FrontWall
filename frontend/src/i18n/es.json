@@ -412,5 +412,27 @@
       "send": "Enviar invitación",
       "sending": "Enviando..."
     }
+  },
+  "profile": {
+    "title": "Perfil",
+    "accountInfo": "Información de la cuenta",
+    "emailLabel": "Correo electrónico",
+    "roleLabel": "Rol",
+    "changePassword": "Cambiar contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "confirmNewPassword": "Confirmar nueva contraseña",
+    "passwordHint": "Mín. 10 caracteres, al menos 1 mayúscula, 1 minúscula, 1 dígito",
+    "savePassword": "Actualizar contraseña",
+    "saving": "Guardando...",
+    "passwordsNoMatch": "Las nuevas contraseñas no coinciden",
+    "passwordChanged": "Contraseña actualizada con éxito",
+    "changeFailed": "Error al cambiar la contraseña",
+    "yourPasskeys": "Tus Passkeys",
+    "addPasskey": "+ Añadir Passkey",
+    "registering": "Registrando...",
+    "noPasskeys": "No hay passkeys registradas. Añade una para iniciar sesión sin contraseña.",
+    "registered": "Registrada",
+    "lastUsed": "Último uso"
   }
 }

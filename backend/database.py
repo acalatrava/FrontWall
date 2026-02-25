@@ -57,6 +57,18 @@ def _add_missing_columns(conn) -> None:
     _ensure_column(conn, inspector, "admin_users", "locked_until", "DATETIME")
     _ensure_column(conn, inspector, "admin_users", "last_login", "DATETIME")
 
+    # Drop obsolete columns
+    _drop_column_if_exists(conn, inspector, "admin_users", "username")
+
+
+def _drop_column_if_exists(conn, inspector, table: str, column: str) -> None:
+    existing = [c["name"] for c in inspector.get_columns(table)]
+    if column in existing:
+        try:
+            conn.execute(sa.text(f"ALTER TABLE {table} DROP COLUMN {column}"))
+        except Exception:
+            pass  # Older SQLite without DROP COLUMN support — column stays inert
+
 
 def _ensure_column(conn, inspector, table: str, column: str, col_type: str) -> None:
     existing = [c["name"] for c in inspector.get_columns(table)]

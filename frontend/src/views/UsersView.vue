@@ -102,32 +102,6 @@
       </div>
     </div>
 
-    <!-- Passkey management for current user -->
-    <div class="mt-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-base sm:text-lg font-bold text-white">{{ t('users.yourPasskeys') }}</h2>
-        <button @click="registerPasskey" :disabled="passkeyRegistering" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium rounded-lg border border-gray-700 transition-colors flex items-center gap-1.5">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          {{ passkeyRegistering ? t('users.registering') : t('users.addPasskey') }}
-        </button>
-      </div>
-      <div v-if="passkeys.length === 0" class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
-        <p class="text-sm text-gray-500">{{ t('users.noPasskeys') }}</p>
-      </div>
-      <div v-else class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800/50">
-        <div v-for="pk in passkeys" :key="pk.id" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 sm:px-5 py-3">
-          <div class="min-w-0">
-            <div class="text-sm text-white font-medium truncate">{{ pk.name }}</div>
-            <div class="text-xs text-gray-500 truncate">{{ t('users.registered') }} {{ formatDate(pk.created_at) }} &middot; ID: {{ pk.credential_id_preview }}</div>
-          </div>
-          <div class="flex items-center gap-3 flex-shrink-0">
-            <span v-if="pk.last_used" class="text-xs text-gray-500 hidden sm:inline">{{ t('users.lastUsed') }} {{ formatDate(pk.last_used) }}</span>
-            <button @click="deletePasskey(pk)" class="text-xs text-red-400 hover:text-red-300">{{ t('common.remove') }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Invite modal -->
     <div v-if="showInvite" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @mousedown.self="showInvite = false">
       <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md p-4 sm:p-6 mx-4 shadow-2xl">
@@ -171,7 +145,6 @@ const auth = useAuthStore()
 const currentUserId = computed(() => auth.user?.user_id)
 
 const users = ref([])
-const passkeys = ref([])
 const loading = ref(true)
 
 const showInvite = ref(false)
@@ -180,8 +153,6 @@ const inviteRole = ref('viewer')
 const inviteError = ref('')
 const inviteSuccess = ref('')
 const inviting = ref(false)
-
-const passkeyRegistering = ref(false)
 
 async function fetchUsers() {
   loading.value = true
@@ -192,16 +163,8 @@ async function fetchUsers() {
   loading.value = false
 }
 
-async function fetchPasskeys() {
-  try {
-    const { data } = await api.get('/auth/passkeys')
-    passkeys.value = data
-  } catch { /* empty */ }
-}
-
 onMounted(() => {
   fetchUsers()
-  fetchPasskeys()
 })
 
 async function toggleRole(u) {
@@ -241,73 +204,6 @@ async function handleInvite() {
   } finally {
     inviting.value = false
   }
-}
-
-function _base64urlToBuffer(b64url) {
-  const padding = '='.repeat((4 - b64url.length % 4) % 4)
-  const base64 = (b64url + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes.buffer
-}
-
-function _bufferToBase64url(buffer) {
-  const bytes = new Uint8Array(buffer)
-  let binary = ''
-  for (const b of bytes) binary += String.fromCharCode(b)
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-async function registerPasskey() {
-  passkeyRegistering.value = true
-  try {
-    const { data: optData } = await api.post('/auth/passkey/register-options', { name: 'My Passkey' })
-    const options = JSON.parse(optData.options)
-
-    options.challenge = _base64urlToBuffer(options.challenge)
-    options.user.id = _base64urlToBuffer(options.user.id)
-    if (options.excludeCredentials) {
-      options.excludeCredentials = options.excludeCredentials.map(c => ({
-        ...c,
-        id: _base64urlToBuffer(c.id),
-      }))
-    }
-
-    const credential = await navigator.credentials.create({ publicKey: options })
-
-    const credentialJSON = {
-      id: credential.id,
-      rawId: _bufferToBase64url(credential.rawId),
-      type: credential.type,
-      response: {
-        attestationObject: _bufferToBase64url(credential.response.attestationObject),
-        clientDataJSON: _bufferToBase64url(credential.response.clientDataJSON),
-      },
-    }
-
-    const transports = credential.response.getTransports ? credential.response.getTransports() : []
-
-    await api.post('/auth/passkey/register-verify', {
-      credential: credentialJSON,
-      transports,
-      name: optData.passkey_name,
-    })
-
-    await fetchPasskeys()
-  } catch (e) {
-    if (e.name !== 'NotAllowedError') {
-      alert(e.response?.data?.detail || 'Passkey registration failed')
-    }
-  } finally {
-    passkeyRegistering.value = false
-  }
-}
-
-async function deletePasskey(pk) {
-  if (!confirm(`Remove passkey "${pk.name}"?`)) return
-  await api.delete(`/auth/passkeys/${pk.id}`)
-  await fetchPasskeys()
 }
 
 function formatDate(iso) {
