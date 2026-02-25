@@ -24,8 +24,7 @@
           <tbody>
             <tr v-for="u in users" :key="u.id" class="border-b border-gray-800/50 last:border-0 hover:bg-gray-800/30 transition-colors">
               <td class="py-3 px-5">
-                <div class="text-sm font-medium text-white">{{ u.username }}</div>
-                <div class="text-xs text-gray-500">{{ u.email || t('users.noEmail') }}</div>
+                <div class="text-sm font-medium text-white">{{ u.email }}</div>
               </td>
               <td class="py-3 px-5">
                 <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -71,8 +70,7 @@
         <div v-for="u in users" :key="'m'+u.id" class="p-4 space-y-2">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm font-medium text-white">{{ u.username }}</div>
-              <div class="text-xs text-gray-500">{{ u.email || t('users.noEmail') }}</div>
+              <div class="text-sm font-medium text-white">{{ u.email }}</div>
             </div>
             <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
                   :class="u.role === 'admin' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'">
@@ -208,20 +206,20 @@ onMounted(() => {
 
 async function toggleRole(u) {
   const newRole = u.role === 'admin' ? 'viewer' : 'admin'
-  if (!confirm(`Change ${u.username}'s role to ${newRole}?`)) return
+  if (!confirm(`Change ${u.email}'s role to ${newRole}?`)) return
   await api.put(`/auth/users/${u.id}`, { role: newRole })
   await fetchUsers()
 }
 
 async function toggleActive(u) {
   const action = u.is_active ? 'deactivate' : 'activate'
-  if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} ${u.username}?`)) return
+  if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} ${u.email}?`)) return
   await api.put(`/auth/users/${u.id}`, { is_active: !u.is_active })
   await fetchUsers()
 }
 
 async function handleDelete(u) {
-  if (!confirm(`Permanently delete ${u.username}? This cannot be undone.`)) return
+  if (!confirm(`Permanently delete ${u.email}? This cannot be undone.`)) return
   await api.delete(`/auth/users/${u.id}`)
   await fetchUsers()
 }

@@ -20,14 +20,14 @@
 
         <template v-if="!requiringPasskey">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.username') }}</label>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.email') }}</label>
             <input
-              v-model="username"
-              type="text"
+              v-model="email"
+              type="email"
               required
-              autocomplete="username"
+              autocomplete="email"
               class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="admin"
+              placeholder="admin@example.com"
             />
           </div>
 
@@ -112,7 +112,7 @@ const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const username = ref('')
+const email = ref('')
 const password = ref('')
 const error = ref('')
 const success = ref('')
@@ -141,7 +141,7 @@ async function handleLogin() {
   success.value = ''
   loading.value = true
   try {
-    const result = await auth.login(username.value, password.value)
+    const result = await auth.login(email.value, password.value)
     if (result && result.require_passkey) {
       requiringPasskey.value = true
       return

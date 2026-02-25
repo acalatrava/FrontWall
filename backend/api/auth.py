@@ -85,11 +85,11 @@ def _constant_time_compare(a: str, b: str) -> bool:
     return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
 
-def _create_access_token(user_id: str, username: str, role: str) -> str:
+def _create_access_token(user_id: str, email: str, role: str) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
-        "username": username,
+        "email": email,
         "role": role,
         "exp": now + timedelta(minutes=settings.jwt_access_expire_minutes),
         "iat": now,
@@ -169,7 +169,7 @@ async def _record_failed_login(user: AdminUser, db: AsyncSession) -> None:
     user.failed_logins = (user.failed_logins or 0) + 1
     if user.failed_logins >= _ACCOUNT_LOCKOUT_THRESHOLD:
         user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=_ACCOUNT_LOCKOUT_MINUTES)
-        logger.warning("Account %s locked after %d failed attempts", user.username, user.failed_logins)
+        logger.warning("Account %s locked after %d failed attempts", user.email, user.failed_logins)
     await db.commit()
 
 
@@ -185,12 +185,12 @@ async def _issue_tokens(user: AdminUser, response: Response, db: AsyncSession) -
     await _clear_failed_logins(user, db)
     await db.commit()
 
-    access = _create_access_token(user.id, user.username, user.role)
+    access = _create_access_token(user.id, user.email, user.role)
     refresh = _create_refresh_token()
     await _store_refresh_token(db, user.id, refresh)
 
     _set_auth_cookies(response, access, refresh)
-    return {"user_id": user.id, "username": user.username, "role": user.role}
+    return {"user_id": user.id, "email": user.email, "role": user.role}
 
 
 # ── Dependencies ──
@@ -232,6 +232,12 @@ async def require_admin(user: AdminUser = Depends(get_current_user)) -> AdminUse
     return user
 
 
+async def require_admin_for_writes(request: Request, user: AdminUser = Depends(get_current_user)) -> AdminUser:
+    if request.method in ("POST", "PUT", "DELETE", "PATCH") and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required for modifying data")
+    return user
+
+
 # ── Setup ──
 
 @router.get("/setup-required")
@@ -251,7 +257,6 @@ async def setup(data: SetupRequest, response: Response, db: AsyncSession = Depen
             raise HTTPException(status_code=400, detail="Setup already completed")
 
         user = AdminUser(
-            username=data.username,
             email=data.email,
             password_hash=_hash_password(data.password),
             role="admin",
@@ -272,7 +277,7 @@ async def login(data: LoginRequest, request: Request, response: Response, db: As
     client_ip = get_client_ip(request)
     await _check_login_rate(client_ip)
 
-    result = await db.execute(select(AdminUser).where(AdminUser.username == data.username))
+    result = await db.execute(select(AdminUser).where(AdminUser.email == data.email))
     user = result.scalar_one_or_none()
 
     if not user or not user.password_hash or not _verify_password(data.password, user.password_hash):
@@ -286,7 +291,7 @@ async def login(data: LoginRequest, request: Request, response: Response, db: As
             path="/api/auth/login",
             method="POST",
             user_agent=request.headers.get("user-agent", ""),
-            details={"username": data.username},
+            details={"email": data.email},
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -363,12 +368,12 @@ async def refresh_tokens(request: Request, response: Response, db: AsyncSession 
         _clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="User not found or deactivated")
 
-    new_access = _create_access_token(user.id, user.username, user.role)
+    new_access = _create_access_token(user.id, user.email, user.role)
     new_refresh = _create_refresh_token()
     await _store_refresh_token(db, user.id, new_refresh, family_id=stored.family_id)
 
     _set_auth_cookies(response, new_access, new_refresh)
-    return {"user_id": user.id, "username": user.username, "role": user.role}
+    return {"user_id": user.id, "email": user.email, "role": user.role}
 
 
 # ── Logout ──
@@ -403,7 +408,6 @@ async def me(user: AdminUser = Depends(get_current_user), db: AsyncSession = Dep
     )
     return {
         "user_id": user.id,
-        "username": user.username,
         "email": user.email,
         "role": user.role,
         "has_passkey": (pk_count.scalar() or 0) > 0,
@@ -427,7 +431,6 @@ async def invite_user(
     token_hash = _hash_token(raw_token)
 
     user = AdminUser(
-        username=data.email.split("@")[0] + "_" + secrets.token_hex(3),
         email=data.email,
         password_hash="!invited",
         role=data.role,
@@ -440,10 +443,30 @@ async def invite_user(
     await db.refresh(user)
 
     invite_url = f"{settings.base_url}/accept-invite?token={raw_token}"
-    await send_invite(data.email, invite_url, admin.username)
+    await send_invite(data.email, invite_url, admin.email)
 
     return {"status": "invited", "user_id": user.id, "email": data.email}
 
+
+@router.get("/invite-info")
+async def get_invite_info(token: str, db: AsyncSession = Depends(get_db)):
+    token_hash = _hash_token(token)
+    result = await db.execute(
+        select(AdminUser).where(AdminUser.invite_token_hash == token_hash)
+    )
+    user = result.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired invite")
+
+    invite_exp = user.invite_expires
+    if invite_exp:
+        invite_exp = invite_exp.replace(tzinfo=timezone.utc) if invite_exp.tzinfo is None else invite_exp
+    if not invite_exp or invite_exp < now:
+        raise HTTPException(status_code=400, detail="Invite has expired")
+
+    return {"email": user.email}
 
 @router.post("/accept-invite")
 async def accept_invite(data: AcceptInviteRequest, response: Response, db: AsyncSession = Depends(get_db)):
@@ -464,12 +487,6 @@ async def accept_invite(data: AcceptInviteRequest, response: Response, db: Async
     if not invite_exp or invite_exp < now:
         raise HTTPException(status_code=400, detail="Invite has expired")
 
-    existing_result = await db.execute(select(AdminUser).where(AdminUser.username == data.username))
-    existing_user = existing_result.scalar_one_or_none()
-    if existing_user and existing_user.id != user.id:
-        raise HTTPException(status_code=409, detail="Username already taken")
-
-    user.username = data.username
     user.password_hash = _hash_password(data.password)
     user.is_active = True
     user.email_verified = True
@@ -551,7 +568,6 @@ async def list_users(
         )
         response.append({
             "id": u.id,
-            "username": u.username,
             "email": u.email,
             "role": u.role,
             "is_active": u.is_active,
@@ -642,8 +658,8 @@ async def passkey_register_options(
         rp_id=settings.webauthn_rp_id,
         rp_name=settings.webauthn_rp_name,
         user_id=user.id.encode("utf-8"),
-        user_name=user.username,
-        user_display_name=user.username,
+        user_name=user.email,
+        user_display_name=user.email,
         exclude_credentials=exclude,
         authenticator_selection=AuthenticatorSelectionCriteria(
             resident_key=ResidentKeyRequirement.PREFERRED,
@@ -692,7 +708,7 @@ async def passkey_register_verify(
             expected_origin=expected_origin,
         )
     except Exception as exc:
-        logger.warning("Passkey registration failed for %s: %s", user.username, exc)
+        logger.warning("Passkey registration failed for %s: %s", user.email, exc)
         raise HTTPException(status_code=400, detail="Passkey registration failed")
 
     existing = await db.execute(
@@ -796,7 +812,7 @@ async def passkey_auth_verify(
             credential_current_sign_count=stored_pk.sign_count,
         )
     except Exception as exc:
-        logger.warning("Passkey auth failed for %s: %s", user.username, exc)
+        logger.warning("Passkey auth failed for %s: %s", user.email, exc)
         raise HTTPException(status_code=401, detail="Passkey verification failed")
 
     stored_pk.sign_count = verification.new_sign_count

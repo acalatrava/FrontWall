@@ -15,7 +15,7 @@ from config import settings
 from database import init_db, async_session
 from services.shield_service import auto_deploy_if_needed
 from services.security_collector import collector as security_collector
-from api.auth import router as auth_router, get_current_user
+from api.auth import router as auth_router, require_admin_for_writes
 from api.sites import router as sites_router
 from api.pages import router as pages_router
 from api.rules import router as rules_router
@@ -95,12 +95,12 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(crawler_ws_router)
-app.include_router(sites_router, dependencies=[Depends(get_current_user)])
-app.include_router(pages_router, dependencies=[Depends(get_current_user)])
-app.include_router(rules_router, dependencies=[Depends(get_current_user)])
-app.include_router(crawler_router, dependencies=[Depends(get_current_user)])
-app.include_router(shield_router, dependencies=[Depends(get_current_user)])
-app.include_router(analytics_router, dependencies=[Depends(get_current_user)])
+app.include_router(sites_router, dependencies=[Depends(require_admin_for_writes)])
+app.include_router(pages_router, dependencies=[Depends(require_admin_for_writes)])
+app.include_router(rules_router, dependencies=[Depends(require_admin_for_writes)])
+app.include_router(crawler_router, dependencies=[Depends(require_admin_for_writes)])
+app.include_router(shield_router, dependencies=[Depends(require_admin_for_writes)])
+app.include_router(analytics_router, dependencies=[Depends(require_admin_for_writes)])
 
 
 @app.get("/api/health")

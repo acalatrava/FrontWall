@@ -5,19 +5,8 @@ from pydantic import BaseModel, field_validator, EmailStr
 
 
 class SetupRequest(BaseModel):
-    username: str
+    email: str
     password: str
-    email: str | None = None
-
-    @field_validator("username")
-    @classmethod
-    def validate_username(cls, v: str) -> str:
-        v = v.strip()
-        if len(v) < 3 or len(v) > 64:
-            raise ValueError("Username must be between 3 and 64 characters")
-        if not re.fullmatch(r"[a-zA-Z0-9._@-]+", v):
-            raise ValueError("Username may only contain letters, digits, dots, underscores, hyphens, and @")
-        return v
 
     @field_validator("password")
     @classmethod
@@ -36,25 +25,22 @@ class SetupRequest(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def validate_email(cls, v: str | None) -> str | None:
-        if v is not None:
-            v = v.strip().lower()
-            if not v:
-                return None
-            EmailStr._validate(v)
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        EmailStr._validate(v)
         return v
 
 
 class LoginRequest(BaseModel):
-    username: str
+    email: str
     password: str
 
-    @field_validator("username")
+    @field_validator("email")
     @classmethod
-    def validate_username(cls, v: str) -> str:
-        if len(v) > 64:
-            raise ValueError("Username too long")
-        return v.strip()
+    def validate_email(cls, v: str) -> str:
+        if len(v) > 320:
+            raise ValueError("Email too long")
+        return v.strip().lower()
 
     @field_validator("password")
     @classmethod
@@ -66,7 +52,7 @@ class LoginRequest(BaseModel):
 
 class AuthResponse(BaseModel):
     user_id: str
-    username: str
+    email: str
     role: str
 
 
@@ -91,18 +77,7 @@ class InviteRequest(BaseModel):
 
 class AcceptInviteRequest(BaseModel):
     token: str
-    username: str
     password: str
-
-    @field_validator("username")
-    @classmethod
-    def validate_username(cls, v: str) -> str:
-        v = v.strip()
-        if len(v) < 3 or len(v) > 64:
-            raise ValueError("Username must be between 3 and 64 characters")
-        if not re.fullmatch(r"[a-zA-Z0-9._@-]+", v):
-            raise ValueError("Invalid username characters")
-        return v
 
     @field_validator("password")
     @classmethod
@@ -154,8 +129,7 @@ class ResetPasswordRequest(BaseModel):
 
 class UserResponse(BaseModel):
     id: str
-    username: str
-    email: str | None
+    email: str
     role: str
     is_active: bool
     email_verified: bool

@@ -10,8 +10,7 @@ class AdminUser(Base):
     __tablename__ = "admin_users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    username: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    email: Mapped[str | None] = mapped_column(String(320), unique=True, nullable=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="admin")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

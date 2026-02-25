@@ -16,17 +16,6 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.username') }}</label>
-          <input
-            v-model="username"
-            type="text"
-            required
-            class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="admin"
-          />
-        </div>
-
-        <div>
           <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.setup.email') }} <span class="text-gray-500 font-normal">{{ t('auth.setup.emailOptional') }}</span></label>
           <input
             v-model="email"
@@ -80,7 +69,7 @@ import { useAuthStore } from '../stores/auth'
 const { t } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
-const username = ref('')
+const email = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -95,7 +84,7 @@ async function handleSetup() {
   }
   loading.value = true
   try {
-    await auth.setup(username.value, password.value, email.value)
+    await auth.setup(email.value, password.value)
     router.push('/dashboard')
   } catch (e) {
     const detail = e.response?.data?.detail

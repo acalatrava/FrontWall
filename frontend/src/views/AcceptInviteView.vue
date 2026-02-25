@@ -14,8 +14,8 @@
         <div v-if="error" class="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">{{ error }}</div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">Username</label>
-          <input v-model="username" type="text" required class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="your_username" />
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+          <input v-model="email" type="email" disabled class="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 focus:outline-none" />
         </div>
 
         <div>
@@ -48,11 +48,22 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const username = ref('')
+const email = ref('')
 const password = ref('')
 const confirm = ref('')
 const error = ref('')
 const loading = ref(false)
+
+import { onMounted } from 'vue'
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get(`/auth/invite-info?token=${route.query.token}`)
+    email.value = data.email
+  } catch (e) {
+    error.value = "Failed to load invite information."
+  }
+})
 
 async function handleAccept() {
   error.value = ''
@@ -64,10 +75,9 @@ async function handleAccept() {
   try {
     const { data } = await api.post('/auth/accept-invite', {
       token: route.query.token,
-      username: username.value,
       password: password.value,
     })
-    auth.user = { user_id: data.user_id, username: data.username, role: data.role }
+    auth.user = { user_id: data.user_id, email: data.email, role: data.role }
     auth.authenticated = true
     router.push('/dashboard')
   } catch (e) {

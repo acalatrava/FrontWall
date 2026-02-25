@@ -7,10 +7,11 @@ from database import get_db
 from models.crawl_job import CrawlJob
 from schemas.crawl_job import CrawlJobResponse
 from services import crawl_service
+from api.auth import require_admin_for_writes
 
 logger = logging.getLogger("frontwall.api.crawler")
 
-router = APIRouter(prefix="/api/crawler", tags=["crawler"])
+router = APIRouter(prefix="/api/crawler", tags=["crawler"], dependencies=[Depends(require_admin_for_writes)])
 ws_router = APIRouter(prefix="/api/crawler", tags=["crawler-ws"])
 
 _ws_connections: dict[str, list[WebSocket]] = {}

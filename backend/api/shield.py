@@ -3,10 +3,11 @@ from fastapi import APIRouter, HTTPException
 
 from services import shield_service
 from shield.geo_resolver import COUNTRY_MAP, HIGH_RISK_COUNTRIES
+from api.auth import require_admin_for_writes
 
 logger = logging.getLogger("frontwall.api.shield")
 
-router = APIRouter(prefix="/api/shield", tags=["shield"])
+router = APIRouter(prefix="/api/shield", tags=["shield"], dependencies=[Depends(require_admin_for_writes)])
 
 
 @router.post("/deploy/{site_id}")

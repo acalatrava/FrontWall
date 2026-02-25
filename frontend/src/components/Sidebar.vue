@@ -39,7 +39,7 @@
       </div>
 
       <div class="px-3 py-2">
-        <div class="text-sm font-medium text-white truncate">{{ auth.user?.username }}</div>
+        <div class="text-sm font-medium text-white truncate">{{ auth.user?.email }}</div>
         <div class="flex items-center gap-1.5 mt-0.5">
           <span class="text-xs px-1.5 py-0.5 rounded-full"
                 :class="auth.user?.role === 'admin' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'">

@@ -13,9 +13,9 @@ export const useAuthStore = defineStore('auth', () => {
     return data.setup_required
   }
 
-  async function setup(username, password, email) {
-    const { data } = await api.post('/auth/setup', { username, password, email: email || null })
-    user.value = { user_id: data.user_id, username: data.username, role: data.role }
+  async function setup(email, password) {
+    const { data } = await api.post('/auth/setup', { email, password })
+    user.value = { user_id: data.user_id, email: data.email, role: data.role }
     authenticated.value = true
   }
 
