@@ -21,8 +21,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(username, password) {
     const { data } = await api.post('/auth/login', { username, password })
+    if (data.require_passkey) {
+      return { require_passkey: true }
+    }
     user.value = { user_id: data.user_id, username: data.username, role: data.role }
     authenticated.value = true
+    return { require_passkey: false }
   }
 
   async function loginWithPasskey() {

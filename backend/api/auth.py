@@ -298,6 +298,10 @@ async def login(data: LoginRequest, request: Request, response: Response, db: As
 
     await _check_account_lock(user, db)
 
+    pk_count = await db.execute(select(func.count(Passkey.id)).where(Passkey.user_id == user.id))
+    if (pk_count.scalar() or 0) > 0:
+        return {"require_passkey": True, "user_id": user.id}
+
     return await _issue_tokens(user, response, db)
 
 
@@ -673,13 +677,19 @@ async def passkey_register_verify(
     if time.monotonic() - ts > _CHALLENGE_TTL:
         raise HTTPException(status_code=400, detail="Challenge expired")
 
+    client_origin = request.headers.get("origin")
+    expected_origins = [settings.webauthn_origin]
+    if "localhost" in settings.webauthn_origin or "127.0.0.1" in settings.webauthn_origin:
+        expected_origins.extend(["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"])
+    expected_origin = client_origin if client_origin in expected_origins else settings.webauthn_origin
+
     try:
         credential = parse_registration_credential_json(_json.dumps(credential_json))
         verification = verify_registration_response(
             credential=credential,
             expected_challenge=challenge,
             expected_rp_id=settings.webauthn_rp_id,
-            expected_origin=settings.webauthn_origin,
+            expected_origin=expected_origin,
         )
     except Exception as exc:
         logger.warning("Passkey registration failed for %s: %s", user.username, exc)
@@ -770,12 +780,18 @@ async def passkey_auth_verify(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or deactivated")
 
+    client_origin = request.headers.get("origin")
+    expected_origins = [settings.webauthn_origin]
+    if "localhost" in settings.webauthn_origin or "127.0.0.1" in settings.webauthn_origin:
+        expected_origins.extend(["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"])
+    expected_origin = client_origin if client_origin in expected_origins else settings.webauthn_origin
+
     try:
         verification = verify_authentication_response(
             credential=credential,
             expected_challenge=challenge,
             expected_rp_id=settings.webauthn_rp_id,
-            expected_origin=settings.webauthn_origin,
+            expected_origin=expected_origin,
             credential_public_key=stored_pk.public_key,
             credential_current_sign_count=stored_pk.sign_count,
         )

@@ -18,56 +18,85 @@
           {{ success }}
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.username') }}</label>
-          <input
-            v-model="username"
-            type="text"
-            required
-            autocomplete="username"
-            class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="admin"
-          />
-        </div>
+        <template v-if="!requiringPasskey">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.username') }}</label>
+            <input
+              v-model="username"
+              type="text"
+              required
+              autocomplete="username"
+              class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="admin"
+            />
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.password') }}</label>
-          <input
-            v-model="password"
-            type="password"
-            required
-            autocomplete="current-password"
-            class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ t('auth.password') }}</label>
+            <input
+              v-model="password"
+              type="password"
+              required
+              autocomplete="current-password"
+              class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
 
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
-        >
-          {{ loading ? t('auth.signingIn') : t('auth.signIn') }}
-        </button>
+          <button
+            type="submit"
+            :disabled="loading"
+            class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+          >
+            {{ loading ? t('auth.signingIn') : t('auth.signIn') }}
+          </button>
 
-        <div v-if="passkeyAvailable" class="relative">
-          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-800"></div></div>
-          <div class="relative flex justify-center text-xs"><span class="bg-gray-900 px-3 text-gray-500">{{ t('auth.orDivider') }}</span></div>
-        </div>
+          <div v-if="passkeyAvailable" class="relative">
+            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-800"></div></div>
+            <div class="relative flex justify-center text-xs"><span class="bg-gray-900 px-3 text-gray-500">{{ t('auth.orDivider') }}</span></div>
+          </div>
 
-        <button
-          v-if="passkeyAvailable"
-          type="button"
-          @click="handlePasskeyLogin"
-          :disabled="passkeyLoading"
-          class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700"
-        >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          {{ passkeyLoading ? t('auth.passkeyVerifying') : t('auth.passkeySignIn') }}
-        </button>
+          <button
+            v-if="passkeyAvailable"
+            type="button"
+            @click="handlePasskeyLogin"
+            :disabled="passkeyLoading"
+            class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 border border-gray-700"
+          >
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            {{ passkeyLoading ? t('auth.passkeyVerifying') : t('auth.passkeySignIn') }}
+          </button>
 
-        <div class="text-center pt-1">
-          <router-link to="/forgot-password" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">{{ t('auth.forgotPassword') }}</router-link>
-        </div>
+          <div class="text-center pt-1">
+            <router-link to="/forgot-password" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">{{ t('auth.forgotPassword') }}</router-link>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="text-center py-2 space-y-4">
+            <div class="mx-auto w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            <div>
+              <p class="text-white font-medium">{{ t('auth.twoFactorRequired', 'Two-Factor Required') }}</p>
+              <p class="text-sm text-gray-400 mt-1">Please verify with your passkey</p>
+            </div>
+            <button
+              type="button"
+              @click="handlePasskeyLogin"
+              :disabled="passkeyLoading"
+              class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {{ passkeyLoading ? t('auth.passkeyVerifying') : 'Verify Passkey' }}
+            </button>
+            <button 
+              type="button" 
+              @click="requiringPasskey = false"
+              class="text-xs text-gray-500 hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </template>
       </form>
     </div>
   </div>
@@ -90,6 +119,7 @@ const success = ref('')
 const loading = ref(false)
 const passkeyLoading = ref(false)
 const passkeyAvailable = ref(false)
+const requiringPasskey = ref(false)
 
 onMounted(async () => {
   passkeyAvailable.value = !!(window.PublicKeyCredential && typeof window.PublicKeyCredential === 'function')
@@ -111,7 +141,11 @@ async function handleLogin() {
   success.value = ''
   loading.value = true
   try {
-    await auth.login(username.value, password.value)
+    const result = await auth.login(username.value, password.value)
+    if (result && result.require_passkey) {
+      requiringPasskey.value = true
+      return
+    }
     router.push('/dashboard')
   } catch (e) {
     const detail = e.response?.data?.detail

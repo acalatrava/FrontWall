@@ -14,17 +14,17 @@ services:
       - WS_DATA_DIR=/app/data
       - WS_COOKIE_SECURE=false
       # SMTP for invites and password resets (optional)
-      # - WS_SMTP_HOST=smtp.example.com
-      # - WS_SMTP_PORT=587
-      # - WS_SMTP_USER=your@email.com
-      # - WS_SMTP_PASSWORD=secret
-      # - WS_SMTP_FROM_EMAIL=noreply@example.com
-      # - WS_SMTP_FROM_NAME=FrontWall
+      # - WS_SMTP_HOST=${WS_SMTP_HOST:-}
+      # - WS_SMTP_PORT=${WS_SMTP_PORT:-}
+      # - WS_SMTP_USER=${WS_SMTP_USER:-}
+      # - WS_SMTP_PASSWORD=${WS_SMTP_PASSWORD:-}
+      # - WS_SMTP_FROM_EMAIL=${WS_SMTP_FROM_EMAIL:-}
+      # - WS_SMTP_FROM_NAME=${WS_SMTP_FROM_NAME:-}
       # WebAuthn / Passkey (adjust for your domain)
-      # - WS_WEBAUTHN_RP_ID=yourdomain.com
-      # - WS_WEBAUTHN_RP_NAME=FrontWall
-      # - WS_WEBAUTHN_ORIGIN=https://yourdomain.com
-      # - WS_BASE_URL=https://yourdomain.com
+      # - WS_WEBAUTHN_RP_ID=${WS_WEBAUTHN_RP_ID:-}
+      # - WS_WEBAUTHN_RP_NAME=${WS_WEBAUTHN_RP_NAME:-}
+      # - WS_WEBAUTHN_ORIGIN=${WS_WEBAUTHN_ORIGIN:-}
+      # - WS_BASE_URL=${WS_BASE_URL:-}
     restart: unless-stopped
     healthcheck:
       test:
