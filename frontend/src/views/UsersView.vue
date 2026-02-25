@@ -235,6 +235,9 @@ async function handleInvite() {
     inviteSuccess.value = `Invitation sent to ${inviteEmail.value}`
     inviteEmail.value = ''
     await fetchUsers()
+    setTimeout(() => {
+      showInvite.value = false
+    }, 1500)
   } catch (e) {
     inviteError.value = e.response?.data?.detail || 'Failed to send invitation'
   } finally {
