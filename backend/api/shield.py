@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from services import shield_service
 from shield.geo_resolver import COUNTRY_MAP, HIGH_RISK_COUNTRIES

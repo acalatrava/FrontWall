@@ -43,7 +43,7 @@
     "signIn": "Sign In",
     "signInTitle": "FrontWall",
     "signInSubtitle": "Sign in to your admin panel",
-    "username": "Username",
+    "email": "Email",
     "password": "Password",
     "confirmPassword": "Confirm Password",
     "signingIn": "Signing in...",

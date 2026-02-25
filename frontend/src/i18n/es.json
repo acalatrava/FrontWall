@@ -43,7 +43,7 @@
     "signIn": "Iniciar sesión",
     "signInTitle": "FrontWall",
     "signInSubtitle": "Accede a tu panel de administración",
-    "username": "Usuario",
+    "email": "Correo electrónico",
     "password": "Contraseña",
     "confirmPassword": "Confirmar contraseña",
     "signingIn": "Iniciando sesión...",

@@ -19,12 +19,12 @@ export const useAuthStore = defineStore('auth', () => {
     authenticated.value = true
   }
 
-  async function login(username, password) {
-    const { data } = await api.post('/auth/login', { username, password })
+  async function login(email, password) {
+    const { data } = await api.post('/auth/login', { email, password })
     if (data.require_passkey) {
       return { require_passkey: true }
     }
-    user.value = { user_id: data.user_id, username: data.username, role: data.role }
+    user.value = { user_id: data.user_id, email: data.email, role: data.role }
     authenticated.value = true
     return { require_passkey: false }
   }
@@ -60,7 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
       credential,
       session_id: sessionId,
     })
-    user.value = { user_id: data.user_id, username: data.username, role: data.role }
+    user.value = { user_id: data.user_id, email: data.email, role: data.role }
     authenticated.value = true
   }
 
